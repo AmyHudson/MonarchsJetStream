@@ -69,10 +69,10 @@ colnames(jetareacorr) <- colnames(jet)
 plot(mexicoarea, type = 'l')
 plot(1994:2012,mexicoareadetrend[,2], type = "l")
 
-plot(1994:2012,scale(mexicoarea[,2]), type = 'l', ylim = c(-3,3), main = c("Mexican Overwintering Acreage and JA_Reg5"))
+plot(1994:2012,scale(mexicoareadetrend[,2]), type = 'l', ylim = c(-3,3), main = c("Mexican Overwintering Acreage and JA_Reg5"))
 lines(1994:2012,scale(jet$JA_Reg5), col = "red")
 
-plot(1994:2012,scale(mexicoarea[,2]), type = 'l', ylim = c(-3,3), main = c("Mexican Overwintering Acreage and ON_Reg6"))
+plot(1994:2012,scale(mexicoareadetrend[,2]), type = 'l', ylim = c(-3,3), main = c("Mexican Overwintering Acreage and ON_Reg6"))
 lines(1994:2012,scale(jet$ON_Reg6), col = "red")
 
 ```
@@ -87,36 +87,46 @@ lines(1994:2012,scale(jet$ON_Reg6), col = "red")
 # Sep: Neg: Bounding Box 34.5N to 35.5N and -99E to -98E
 # Oct: Pos: Bounding Box 34N to 35N and -111E to -110E
 
+# I made a file 'MoRegRepTimeSeries.csv' that has 23 obs of 20 variables 1994-2016
+# What is area? 
 a <- read.csv('MoRegRepTimeSeries.csv', header = T)
-
 colMeans(a[2:20])
 
-plot(a$YEAR,scale(a[,2]), type = 'l', ylim = c(-3,3), main = "Feb: Neg: Bounding Box 49N to 50N and -81E to -80E", ylab = "Scaled Temp Mean, Max, Min", xlab = "YEAR")
+# make mexicoareadetrend 1994-2016
+
+mexicoarea <- read.table('Butterflies.txt',header = T)
+mexicoarea[,1] <- 1994:2017 #1994:2017
+mexicoareadetrend <- detrend(mexicoarea,make.plot = T, method = c("ModNegExp"))
+mexicoareadetrend <- mexicoareadetrend[1:23,]
+
+
+
+plot(a$YEAR,scale(mexicoareadetrend[,2]), type = 'l', ylim = c(-3,3), main = "Feb: Neg: Bounding Box 49N to 50N and -81E to -80E", ylab = "Scaled Temp Mean, Max, Min", xlab = "YEAR")
 lines(a$YEAR,-scale(a$FebNegMEAN), col = 'blue')
 lines(a$YEAR,-scale(a$FebNegMAX), col = 'dark blue')
 lines(a$YEAR,-scale(a$FebNegMIN), col = 'light blue')
 
-plot(a$YEAR,scale(a[,2]), type = 'l', ylim = c(-3,3), main = "Feb: Pos: Bounding Box 30N to 31N and -111E to -110E", ylab = "Scaled Temp Mean, Max, Min", xlab = "YEAR")
+plot(a$YEAR,scale(mexicoareadetrend[,2]), type = 'l', ylim = c(-3,3), main = "Feb: Pos: Bounding Box 30N to 31N and -111E to -110E", ylab = "Scaled Temp Mean, Max, Min", xlab = "YEAR")
 lines(a$YEAR,scale(a$FebPosMEAN), col = 'red')
 lines(a$YEAR,scale(a$FebPosMAX), col = 'dark red')
 lines(a$YEAR,scale(a$FebPosMIN), col = 'salmon')
 
-plot(a$YEAR,scale(a[,2]), type = 'l', ylim = c(-3,3), main = "Mar: Neg: Bounding Box 29N to 30N and -99E to -98E", ylab = "Scaled Temp Mean, Max, Min", xlab = "YEAR")
+plot(a$YEAR,scale(mexicoareadetrend[,2]), type = 'l', ylim = c(-3,3), main = "Mar: Neg: Bounding Box 29N to 30N and -99E to -98E", ylab = "Scaled Temp Mean, Max, Min", xlab = "YEAR")
 lines(a$YEAR,-scale(a$MarNegMEAN), col = 'blue')
 lines(a$YEAR,-scale(a$MarNegMAX), col = 'dark blue')
 lines(a$YEAR,-scale(a$MarNegMIN), col = 'light blue')
 
-plot(a$YEAR,scale(a[,2]), type = 'l', ylim = c(-3,3), main = "Aug: Pos: Bounding Box 50N to 51N and -91E to -90E", ylab = "Scaled Temp Mean, Max, Min", xlab = "YEAR")
+plot(a$YEAR,scale(mexicoareadetrend[,2]), type = 'l', ylim = c(-3,3), main = "Aug: Pos: Bounding Box 50N to 51N and -91E to -90E", ylab = "Scaled Temp Mean, Max, Min", xlab = "YEAR")
 lines(a$YEAR,scale(a$AugPosMEAN), col = 'red')
 lines(a$YEAR,scale(a$AugPosMAX), col = 'dark red')
 lines(a$YEAR,scale(a$AugPosMIN), col = 'salmon')
 
-plot(a$YEAR,scale(a[,2]), type = 'l', ylim = c(-3,3), main = "Sep: Neg: Bounding Box 34.5N to 35.5N and -99E to -98E", ylab = "Scaled Temp Mean, Max, Min", xlab = "YEAR")
+plot(a$YEAR,scale(mexicoareadetrend[,2]), type = 'l', ylim = c(-3,3), main = "Sep: Neg: Bounding Box 34.5N to 35.5N and -99E to -98E", ylab = "Scaled Temp Mean, Max, Min", xlab = "YEAR")
 lines(a$YEAR,-scale(a$SepNegMEAN), col = 'blue')
 lines(a$YEAR,-scale(a$SepNegMAX), col = 'dark blue')
 lines(a$YEAR,-scale(a$SepNegMIN), col = 'light blue')
 
-plot(a$YEAR,scale(a[,2]), type = 'l', ylim = c(-3,3), main = "Oct: Pos: Bounding Box 34N to 35N and -111E to -110E", ylab = "Scaled Temp Mean, Max, Min", xlab = "YEAR")
+plot(a$YEAR,scale(mexicoareadetrend[,2]), type = 'l', ylim = c(-3,3), main = "Oct: Pos: Bounding Box 34N to 35N and -111E to -110E", ylab = "Scaled Temp Mean, Max, Min", xlab = "YEAR")
 lines(a$YEAR,scale(a$OctPosMEAN), col = 'red')
 lines(a$YEAR,scale(a$OctPosMAX), col = 'dark red')
 lines(a$YEAR,scale(a$OctPosMIN), col = 'salmon')
@@ -129,7 +139,7 @@ rcorr(a$FebNegMEAN,a$FebPosMEAN)
 rcorr(a$FebNegMIN,a$FebPosMIN)
 rcorr(a$FebNegMAX,a$FebPosMAX)
 
-plot(a$YEAR,scale(a[,2]), type = 'l', ylim = c(-3,3), main = "Feb Dipole", ylab = "Scaled Temp Mean, Max, Min", xlab = "YEAR")
+plot(a$YEAR,scale(mexicoareadetrend[,2]), type = 'l', ylim = c(-3,3), main = "Feb Dipole", ylab = "Scaled Temp Mean, Max, Min", xlab = "YEAR")
 lines(a$YEAR,-scale(a[,3]), col = 'blue')
 lines(a$YEAR,-scale(a[,4]), col = 'dark blue')
 lines(a$YEAR,-scale(a[,5]), col = 'light blue')
