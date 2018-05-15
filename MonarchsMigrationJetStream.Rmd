@@ -1,0 +1,143 @@
+---
+title: "MonarchsJetStream"
+author: "Amy Hudson"
+date: "4/30/2018"
+output: html_document
+---
+##A Markdown space for exploring Jet Stream Monarch Migration interactions
+
+```{r libraries, include=FALSE}
+setwd("~/Documents/Monarchs")
+library(maps)
+library(mapdata)
+library(maptools)  #for shapefiles
+library(scales)  #for transparency
+library(ggplot2)
+library(devtools)
+library(dplyr)
+library(stringr)
+library(ggmap) #need to cite ggmap
+library(Hmisc)
+library(treeclim)
+library(dplR)
+library(corrgram)
+```
+
+
+```{r read_in_jet_indices}
+#jet indices only cover 1930-2012
+#jet indices are only based on maximum zonal wind speed
+jet <- read.table("JetIndices.txt", header = TRUE) 
+jet <- jet[jet$YEAR>=1994,]
+jet[,1] <- NULL
+jetdetrend<- detrend(jet,make.plot = F, method = c("ModNegExp"))
+
+#Butterflies.txt is overwintering monarch data in Mexico in hectares, from https://monarchjointventure.org/news-events/news/eastern-monarch-overwintering-population-numbers-announced, covering period 1994/95 to 2017/18
+  
+mexicoarea <- read.table('Butterflies.txt',header = T)
+mexicoarea[,1] <- 1994:2017 #1994:2017
+mexicoarea <- mexicoarea[1:19,] #[1:19,]
+#detrend(mexicoarea,make.plot = T)
+mexicoareadetrend <- detrend(mexicoarea,make.plot = T, method = c("ModNegExp"))
+mexicoareadetrend[,1] <- 1994:2012 #1994:2012
+
+#make a rho and pval to find significant correlations.
+rho <- NA[length(jet)]
+pval <- NA[length(jet)]
+
+for (i in 1:length(jet)){
+   rho[i]<- rcorr(jetdetrend[,i],mexicoareadetrend[,2],type = c("spearman"))$r[1,2]
+   pval[i]<- rcorr(jetdetrend[,i],mexicoareadetrend[,2],type = c("spearman"))$P[1,2]
+}
+#
+jetareacorr<- rbind(pval,rho)
+colnames(jetareacorr) <- colnames(jet)
+
+#JulyAugust Reg5 is 104W to 58W, 49.5+-2.2N r = 0.287, p = 0.233
+
+#September (No jet Indices for September)
+
+#October November Jet stream Indices Region 6 (146W-98W; 47.1N +- 3.4N)(r = 0.373, p = 0.115) Showing a positive correlation with Jet stream position and Temperature in that region and Monarch overwintering numbers. 
+
+
+```
+
+## Time series plots of Monarch Acreage and Jet Position
+
+
+```{r pressure, echo=FALSE}
+plot(mexicoarea, type = 'l')
+plot(1994:2012,mexicoareadetrend[,2], type = "l")
+
+plot(1994:2012,scale(mexicoarea[,2]), type = 'l', ylim = c(-3,3), main = c("Mexican Overwintering Acreage and JA_Reg5"))
+lines(1994:2012,scale(jet$JA_Reg5), col = "red")
+
+plot(1994:2012,scale(mexicoarea[,2]), type = 'l', ylim = c(-3,3), main = c("Mexican Overwintering Acreage and ON_Reg6"))
+lines(1994:2012,scale(jet$ON_Reg6), col = "red")
+
+```
+```{r plot_time_series}
+
+# TMean, TMax, TMin
+
+# Feb: Neg: Bounding Box 49N to 50N and -81E to -80E
+# Feb: Pos: Bounding Box 30N to 31N and -111E to -110E
+# Mar: Neg: Bounding Box 29N to 30N and -99E to -98E
+# Aug: Pos: Bounding Box 50N to 51N and -91E to -90E
+# Sep: Neg: Bounding Box 34.5N to 35.5N and -99E to -98E
+# Oct: Pos: Bounding Box 34N to 35N and -111E to -110E
+
+a <- read.csv('MoRegRepTimeSeries.csv', header = T)
+
+colMeans(a[2:20])
+
+plot(a$YEAR,scale(a[,2]), type = 'l', ylim = c(-3,3), main = "Feb: Neg: Bounding Box 49N to 50N and -81E to -80E", ylab = "Scaled Temp Mean, Max, Min", xlab = "YEAR")
+lines(a$YEAR,-scale(a$FebNegMEAN), col = 'blue')
+lines(a$YEAR,-scale(a$FebNegMAX), col = 'dark blue')
+lines(a$YEAR,-scale(a$FebNegMIN), col = 'light blue')
+
+plot(a$YEAR,scale(a[,2]), type = 'l', ylim = c(-3,3), main = "Feb: Pos: Bounding Box 30N to 31N and -111E to -110E", ylab = "Scaled Temp Mean, Max, Min", xlab = "YEAR")
+lines(a$YEAR,scale(a$FebPosMEAN), col = 'red')
+lines(a$YEAR,scale(a$FebPosMAX), col = 'dark red')
+lines(a$YEAR,scale(a$FebPosMIN), col = 'salmon')
+
+plot(a$YEAR,scale(a[,2]), type = 'l', ylim = c(-3,3), main = "Mar: Neg: Bounding Box 29N to 30N and -99E to -98E", ylab = "Scaled Temp Mean, Max, Min", xlab = "YEAR")
+lines(a$YEAR,-scale(a$MarNegMEAN), col = 'blue')
+lines(a$YEAR,-scale(a$MarNegMAX), col = 'dark blue')
+lines(a$YEAR,-scale(a$MarNegMIN), col = 'light blue')
+
+plot(a$YEAR,scale(a[,2]), type = 'l', ylim = c(-3,3), main = "Aug: Pos: Bounding Box 50N to 51N and -91E to -90E", ylab = "Scaled Temp Mean, Max, Min", xlab = "YEAR")
+lines(a$YEAR,scale(a$AugPosMEAN), col = 'red')
+lines(a$YEAR,scale(a$AugPosMAX), col = 'dark red')
+lines(a$YEAR,scale(a$AugPosMIN), col = 'salmon')
+
+plot(a$YEAR,scale(a[,2]), type = 'l', ylim = c(-3,3), main = "Sep: Neg: Bounding Box 34.5N to 35.5N and -99E to -98E", ylab = "Scaled Temp Mean, Max, Min", xlab = "YEAR")
+lines(a$YEAR,-scale(a$SepNegMEAN), col = 'blue')
+lines(a$YEAR,-scale(a$SepNegMAX), col = 'dark blue')
+lines(a$YEAR,-scale(a$SepNegMIN), col = 'light blue')
+
+plot(a$YEAR,scale(a[,2]), type = 'l', ylim = c(-3,3), main = "Oct: Pos: Bounding Box 34N to 35N and -111E to -110E", ylab = "Scaled Temp Mean, Max, Min", xlab = "YEAR")
+lines(a$YEAR,scale(a$OctPosMEAN), col = 'red')
+lines(a$YEAR,scale(a$OctPosMAX), col = 'dark red')
+lines(a$YEAR,scale(a$OctPosMIN), col = 'salmon')
+
+
+```
+
+```{r test_Feb_dipole}
+rcorr(a$FebNegMEAN,a$FebPosMEAN)
+rcorr(a$FebNegMIN,a$FebPosMIN)
+rcorr(a$FebNegMAX,a$FebPosMAX)
+
+plot(a$YEAR,scale(a[,2]), type = 'l', ylim = c(-3,3), main = "Feb Dipole", ylab = "Scaled Temp Mean, Max, Min", xlab = "YEAR")
+lines(a$YEAR,-scale(a[,3]), col = 'blue')
+lines(a$YEAR,-scale(a[,4]), col = 'dark blue')
+lines(a$YEAR,-scale(a[,5]), col = 'light blue')
+
+lines(a$YEAR,scale(a[,6]), col = 'red')
+lines(a$YEAR,scale(a[,7]), col = 'dark red')
+lines(a$YEAR,scale(a[,8]), col = 'salmon')
+
+
+```
+
