@@ -3,7 +3,7 @@
 # Figure 1. Climate differences between high and low monarch overwintering acreage numbers. The colored regions are the temperature values for significant correlations between monarch overwintering acreage and August (top panels) and September (bottom) average temperatures for 1994 to 2017 that precede a peak in monarch acreage (2003; left) and a trough in monarch acreage (2009; right). The wind vector field at 500 mb overlays the temperature field to emphasize the atmospheric influence over surface temperatures. 
 
 # I accessed meridional wind: vwnd.mon.mean.nc and zonal wind: uwnd.mon.mean.nc from the NCEP/NCAR Reanalysis project spanning 1948-present https://www.esrl.noaa.gov/psd/data/gridded/data.ncep.reanalysis.derived.surface.html and mean temperature: cru_ts4.01.1901.2016.tmp.dat.nc from CRU TS4.01: Climatic Research Unit (CRU) Time-Series (TS) version 4.01 of high-resolution gridded data of month-by-month variation in climate (Jan. 1901- Dec. 2016) http://data.ceda.ac.uk/badc/cru/data/cru_ts/cru_ts_4.01/data/tmp/ 
-# I am working on putting this online in my cyverse account.
+# I am working on putting these files online in my cyverse account.
 
 ## The code below is replicated for August 2003 and 2009 and September 2003 and 2009- I manually change the years subsetted and the months subsetted to produce the 4 pannels in figure 1. 
 
