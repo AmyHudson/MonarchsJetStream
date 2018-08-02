@@ -1,17 +1,16 @@
-## This code produces Figure 1 of the whitepaper07_16.docx for Monarch Madness.
+## This code produces Figure 1 and 2 of the white paper for Monarch Madness: Do changes in the polar jet stream correlate with monarch overwintering numbers? Amy Hudson and Kathleen Prudic.
 
-# Figure 1. Climate differences between high and low monarch overwintering acreage numbers. The colored regions are the temperature values for significant correlations between monarch overwintering acreage and August (top panels) and September (bottom) average temperatures for 1994 to 2017 that precede a peak in monarch acreage (2003; left) and a trough in monarch acreage (2009; right). The wind vector field at 500 mb overlays the temperature field to emphasize the atmospheric influence over surface temperatures. 
+# Figure 1. Climate differences between high and low monarch overwintering acreage numbers. The colored regions are the temperature values for significant correlations between monarch overwintering acreage and August (top panels) and September (bottom) average temperatures for 1994 to 2017 that precede a peak in monarch acreage (2003; right) and a trough in monarch acreage (2002; left). The wind vector field at 300 mb overlays the temperature field to emphasize the atmospheric influence over surface temperatures. 
+
+#Figure 2. Same as Figure 1, but temperature anomalies from the 1994-2017 time period are shown as the base map. The peak in 2003 seems to be due to a wavier jet stream in August and September, with a high pressure system showing warmer temperature anomalies in August (red pixels in top right panel) and a low pressure system and cool temperature anomalies in September (blue pixels in bottom right panel).
 
 # I accessed meridional wind: vwnd.mon.mean.nc and zonal wind: uwnd.mon.mean.nc from the NCEP/NCAR Reanalysis project spanning 1948-present https://www.esrl.noaa.gov/psd/data/gridded/data.ncep.reanalysis.derived.surface.html and mean temperature: cru_ts4.01.1901.2016.tmp.dat.nc from CRU TS4.01: Climatic Research Unit (CRU) Time-Series (TS) version 4.01 of high-resolution gridded data of month-by-month variation in climate (Jan. 1901- Dec. 2016) http://data.ceda.ac.uk/badc/cru/data/cru_ts/cru_ts_4.01/data/tmp/ 
-# These files are now all available online in my cyverse account: /iplant/home/amyrhudson/data
 
-## The code below is replicated for August 2003 and 2009 and September 2003 and 2009- I manually change the years subsetted and the months subsetted to produce the 4 pannels in figure 1. 
+#This data can be accessed on my google drive, along with the countries shape file: https://drive.google.com/drive/folders/10kMMlz3pLzPt50Ti6uJNs2gqcZl-vGyy?usp=sharing
 
-## To Do: 
-# Make the Color Bars uniform across pannels.
-# Create difference maps.
-# Subset for significant wind pixels (meridional and zonal) before creating the vectorplots.
+## The code below is replicated for August 2003 and 2002 and September 2003 and 2002 mean temperatures and anomalies- I manually change the years subsetted and the months subsetted to produce the 4 pannels in figure 1 and 2. 
 
+# ... sometimes the rasterVis library needs to be removed and re-installed. 
 ####################################################################################
 
 # MERIDIONAL 
@@ -44,7 +43,7 @@ xdim <- round(a$dim[[2]]$vals, digits = 5)# lat
 ydim <- round(a$dim[[3]]$vals, digits = 5) # lon
 zdim <- a$dim[[4]]$vals # time
 
-ws <- which(wdim == 500)
+ws <- which(wdim == 300)
 xs <- which(xdim == 62.5)
 ys <-  which(ydim == 242.5) 
 zs <- which(zdim == 1700568) # #know this from looking up the time variable 1117
@@ -64,12 +63,15 @@ latitude <- xdim[c(xs:(xs+19))]
 longitude<- ydim[c(ys:(ys+23))]
 ## Good up to here 6/29; need to find out how to subset the time component to true false or 0 1
 #mon <- Clim_var.nc[,,itime[,2]==2] # February
-#mon <- Clim_var.nc[,,itime[,2]==8] # August
-mon <- Clim_var.nc[,,itime[,2]==9] # Septemper
+mon <- Clim_var.nc[,,itime[,2]==8] # August
+#mon <- Clim_var.nc[,,itime[,2]==9] # Septemper
 
 mon1 <- aperm(mon,c(3,2,1)) #reorder with time variable in front, lat, lon
 m2003 <- mon1[10,,] #10 is 2003, 2009 is 16
+#m2003 <- mon1[9,,] #2002
+
 #m2003 <- mon1[16,,] #10 is 2003, 2009 is 16
+
 
 dim(mon1)<- c(length(data_time), length(latitude)*length(longitude))
 
@@ -82,9 +84,6 @@ extent(rotate3) <- extent(c(min(longitude)-360,max(longitude)-360,min(latitude),
 v <- rotate3
 ########################################################################################## ZONAL
 
-#don't know how to subset the time variable to 1994
-#1117
-
 a <- nc_open("uwnd.mon.mean.nc")
 
 wdim <- round(a$dim[[1]]$vals, digits = 5)# level
@@ -92,7 +91,7 @@ xdim <- round(a$dim[[2]]$vals, digits = 5)# lat
 ydim <- round(a$dim[[3]]$vals, digits = 5) # lon
 zdim <- a$dim[[4]]$vals # time
 
-ws <- which(wdim == 500)
+ws <- which(wdim == 300)
 xs <- which(xdim == 62.5)
 ys <-  which(ydim == 242.5) 
 zs <- which(zdim == 1700568) # #know this from looking up the time variable 1117
@@ -111,12 +110,13 @@ latitude <- xdim[c(xs:(xs+19))]
 longitude<- ydim[c(ys:(ys+23))]
 ## Good up to here 6/29; need to find out how to subset the time component to true false or 0 1
 #mon <- Clim_var.nc[,,itime[,2]==2] # February
-#mon <- Clim_var.nc[,,itime[,2]==8] # August
-mon <- Clim_var.nc[,,itime[,2]==9] # September
+mon <- Clim_var.nc[,,itime[,2]==8] # August
+#mon <- Clim_var.nc[,,itime[,2]==9] # September
 
 mon1 <- aperm(mon,c(3,2,1)) #reorder with time variable in front, lat, lon
 
 m2003 <- mon1[10,,]
+#m2003 <- mon1[9,,]
 #m2003 <- mon1[16,,]
 
 
@@ -142,12 +142,7 @@ month <- rep(1:12,116)#repeat 1:12 116 times
 #crop to 1994 (jan or feb)
 time <- cbind(year,month)
 time <- subset(time,year >=1994)
-#itime <- cbind(time,year>=1994)
 
-#don't know how to subset the time variable to 1994
-#1117
-
-#a <- nc_open("~/Documents/R/cru_ts4.01.1901.2016.tmp.dat.nc")
 a <- nc_open("cru_ts4.01.1901.2016.tmp.dat.nc")
 
 xdim <- round(a$dim[[1]]$vals, digits = 5)# lon
@@ -172,8 +167,8 @@ longitude <- xdim[c(xs:(xs+113))]
 latitude <- ydim[c(ys:(ys+91))]
 ## Good up to here 6/29; need to find out how to subset the time component to true false or 0 1
 #mon <- Clim_var.nc[,,time[,2]==2] # February
-#mon <- Clim_var.nc[,,time[,2]==8] # August
-mon <- Clim_var.nc[,,time[,2]==9] # September
+mon <- Clim_var.nc[,,time[,2]==8] # August
+#mon <- Clim_var.nc[,,time[,2]==9] # September
 ########################################################################################
 
 mon1 <- aperm(mon,c(3,2,1)) #reorder with time variable in front, lat, lon
@@ -219,11 +214,18 @@ for (i in 1:length(mon1detrend)){
     mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
 }
+
+cM <- colMeans(mon1df1)
+
+#mon1df1 <- as.matrix(mon1df1[10,]-cM) #temperature anomalies 2003
+#mon1df1 <- as.matrix(mon1df1[9,]-cM) #temperature anomalies 2002
+
 # 
 # ##################################
 # 
-mon1df1 <- as.matrix(mon1df1[10,]) #subsets 2003; #(1994:2016)[10]
-#mon1df1 <- as.matrix(mon1df1[16,]) #subsets 2003; #(1994:2016)[10]
+#mon1df1 <- as.matrix(mon1df1[10,]) #subsets 2003; #(1994:2016)[10]
+mon1df1 <- as.matrix(mon1df1[9,]) #subsets 2002
+#16 subsets 2009; #(1994:2016)[16]
 
 dim(mon1df1) <- c(length(latitude),length(longitude))
 mon1df1 <- as.data.frame(mon1df1)
@@ -269,11 +271,11 @@ extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(lati
 
 m <- rotate3 #
 
-em = merge(extent(m),extent(w))
+#em = merge(extent(m),extent(w))
 
 #plot(em, type="n")
 #plot(m,add=TRUE, legend=FALSE)
-#vectorplot(w, add=TRUE, legend=FALSE)
+#vectorplot(, add=TRUE, legend=FALSE)
 
 #######################
 # Was trying to plot only significant winds... had to run meridional.R and zonal.R for significant u and v as raster objects, and then from mapwindarrows.R I developed the speed and direction from those significant wind speeds.
@@ -301,7 +303,8 @@ w <- brick(u, v)
 #7/11/2018
 require(utils)
 require(RNetCDF)
-require(rasterVis)
+#require(rasterVis)
+library(rasterVis)
 library(rgdal)
 ## The commented code below did not work... Don't know why.#########################
 # cntry <- readOGR(dsn = ".", layer = "ne_50m_admin_0_countries", stringsAsFactors = TRUE)
@@ -311,6 +314,7 @@ library(rgdal)
 # readOGR(dsn=path.expand("."), layer="ne_50m_admin_0_countries")
 # library(raster)
 # s <- shapefile("./ne_50m_admin_0_countries.shp")
+
 cntry <- readOGR('./ne_50m_admin_0_countries.shp',stringsAsFactors = TRUE)
 projection(cntry)
 getClass(cntry)
@@ -322,26 +326,50 @@ require(RNetCDF)
 require(OceanView) 
 library(plot3D)
 
-vectorplot(w, isField = T, par.settings=YlOrRdTheme ,region = m, margin = FALSE, narrows = 10000) + layer(sp.polygons(cntry)) #tried making w a speed then dir1 raster, with 0 is due north... 
+#vectorplot(w, isField = "dXY", par.settings=YlOrRdTheme ,region = m, margin = FALSE, narrows = 10000) + layer(sp.polygons(cntry)) #tried making w a speed then dir1 raster, with 0 is due north... 
+
 
 #maybe bind my significant raster with the m region- same extent needed as well. 
 #Or could bold?
 #need to clean up m
 #need to learn how to make the color bar the same across the figures.
 
-##############
+#################################
 ## Trying to change the color bar to be the same across all my August September 2003 2009 figures. Doesn't work yet. 
 
 
-# vectorplot(w*2,isField = "dXY",region = m, clim = c(10,30),par.settings=YlOrRdTheme , margin = FALSE, narrows = 10000) + layer(sp.polygons(cntry)) 
+
+#vectorplot(w,isField = "dXY",region = m, clim = c(20,30),par.settings=YlOrRdTheme , margin = FALSE, narrows = 10000 )
+#+ layer(sp.polygons(cntry)) 
 #  
-# vectorplot(w*2, isField = "dXY", par.settings=YlOrRdTheme ,region = m, margin = FALSE, colorkey = TRUE, clim = c(10,30),clab = expression(degree*C)) + layer(sp.polygons(cntry))
-# colkey(clim = c(10,30),par.settings=YlOrRdTheme,clab = expression(), add = T)
-# 
+
+library(lattice)
+#this works!!
+vectorplot(w,
+           isField = "dXY",
+           region = m,
+           par.settings= BuRdTheme(region = rev(brewer.pal(10, 'RdBu')), lim = c(10,30), at = seq(10,30,length = 21)),
+           at = seq(10,30,length = 21),
+           #margin = FALSE,
+           #narrows = 10000,
+           colorkey= list(at = seq(10,30,length = 21), title = expression(degree*C))) + layer(sp.polygons(cntry))
+
+# temperature anomalies 
+vectorplot(w, 
+           isField = "dXY", 
+           region = m, 
+           par.settings= BuRdTheme(),
+           at = seq(-3,3,length = 7),
+           #margin = FALSE,
+           #narrows = 10000,
+           colorkey= list(at = seq(-3,3,length = 7), title = expression(degree*C),title)) + layer(sp.polygons(cntry))
+########################
+
+
 # rasterTheme(region = matlab.like(n = 10)), 
 # narrows = 10000)
 # 
-# vectorplot(Wind.x, Wind.y, x = WMI$time - WMI$time[1], colvar = WMI$altitude,
+#vectorplot(Wind.x, Wind.y, x = WMI$time - WMI$time[1], colvar = WMI$altitude,
 #            xlab = "time", ylab = "m/s", #clab = "height, km", 
 #            main = "wind velocity from flight", colkey = FALSE)
 # colkey (side = 3, length = 0.5, width = 0.5, dist = -0.71, shift = -0.2, 
