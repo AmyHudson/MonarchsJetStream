@@ -1,10 +1,21 @@
 #NPN Monarch and Nectar Connector 
 
+# Nectar connector + Monarchs gets us 53 nectar species' phenophases + Monarch observations
+
+# First we look at the Fall migration path (bounding box below) and how longer growing seasons- later last yes flowering phenophase- increased nectar access- leads to higher monarch return
+
+# This does not get us too many observations (although there does seem to be a relationship with monarch return for what we have)
+
+# Other phenophases (and plant species?) may help increase those observation numbers...
+
+# Next steps include adding in direct data requests to NPN with the Rnpn package; and checking out those other phenophases/ species to up sample sizes.
+
 #################################################################################
 
 #read in the site_phenometrics_data.csv
 
-npn <- read.csv("~/Downloads/datasheet_1595346252951/site_phenometrics_data.csv")
+#npn <- read.csv("~/Downloads/datasheet_1595346252951/site_phenometrics_data.csv") # or in repo site_phenometrics_data.csv
+npn <- read.csv("site_phenometrics_data.csv") # or in repo site_phenometrics_data.csv
 
 library(maps)
 library(mapdata)
