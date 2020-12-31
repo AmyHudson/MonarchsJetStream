@@ -36,6 +36,12 @@ map("worldHires",c("USA"), xlim=c(-130,-60),ylim=c(25,50), fill=F, add = F,lwd =
 map.axes()
 map('state', add =T)
 
+unique(npn$Phenophase_ID)
+unique(npn$Phenophase_Description)
+mm<- npn[which(npn$Phenophase_Description == "Migrating adults (in uniform direction)" ),]
+boxplot()
+
+
 # remove butterfly to focus on plants
 nectar <- npn[which(npn$Genus != "Danaus"),]
 nectar <- npn[which((npn$Genus != "Danaus")& (npn$Phenophase_ID == 201 | npn$Phenophase_ID == 500 | npn$Phenophase_ID == 501)),]
@@ -66,10 +72,10 @@ abline(h = mean(t$V2, na.rm = T))
 
 mexicoarea <- read.table('Butterflies1994-2019.txt',header = T)
 mexicoarea[,1] <- 1994:2019
-mexicoarea <- mexicoarea[17:26,]#2009-2019 overlap with nectar
-mexicoareadetrend <- matrix(NA,nrow = length(2010:2019),ncol = 2)
+mexicoarea <- mexicoarea[16:26,]#2009-2019 overlap with nectar
+mexicoareadetrend <- matrix(NA,nrow = length(2009:2019),ncol = 2)
 mexicoareadetrend[,2] <- lm(mexicoarea$MexicoArea~mexicoarea$Year)$residuals
-mexicoareadetrend[,1] <- 2010:2019 #1994:2012
+mexicoareadetrend[,1] <- 2009:2019 #1994:2012
 mexicoareadetrend <- data.frame(mexicoareadetrend)
 colnames(mexicoareadetrend) <- c("Year", "MexicoArea")
 #plot(t$V1,scale(t$`mean(V2, na.rm = T)`), type = "l", ylim = c(-3,3))
