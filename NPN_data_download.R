@@ -8,92 +8,232 @@ library(rnpn)
 # all flowering data
 # subset to bounding box + 2010-2020
 
-NPNdata <- npn_download_individual_phenometrics(request_source = "TCrimmins", years = c(1993:2019),
-                                     coords = c(20, -104, 40, -90))
-                                                                   
-# 1858
+#NPNdata <- npn_download_individual_phenometrics(request_source = "TCrimmins", years = c(1993:2019),
+#                                     coords = c(20, -104, 40, -90))
+NPNdata <- npn_download_status_data(request_source = "TCrimmins", years = c(1993:2019),
+                                                coords = c(20, -104, 40, -90))
 # subset to flowering
 unique(NPNdata$phenophase_description)
 
 NNflowering <- subset(NPNdata, phenophase_description=="Open flowers (1 location)" | phenophase_description=="Open flowers" |
                         phenophase_description=="Open flowers (lilac)")
 
+# all flowering within the September through November window
+NNflowering <- NNflowering[which(NNflowering$day_of_year<=334 & NNflowering$day_of_year>=244),]
+
 summary(NNflowering)
+
+# group by individual_id
+length(unique(NNflowering$individual_id))
+length(unique(NNflowering$site_id))
+#########################################
+#fraction of yes to no per individual (by site?)- this doesn't work because 
+# there are different periods of observation for each individual and site, so 
+# ratio will be different
+datetxt <- as.Date(NNflowering$observation_date)
+
+
+# intensity
+df <- as.data.frame(cbind(NNflowering$site_id,NNflowering$individual_id,NNflowering$phenophase_status,NNflowering$intensity_value,as.numeric(format(datetxt, format = "%Y"))))
+colnames(df) <- c("site_id","individual_id","phenophase_status","intensity_value","year")
+df
+# intensity of individuals flowering
+df1 <- df[which(df$intensity_value != -9999),]
+unique(df1$intensity_value)
+df1[which(df1$intensity_value==c("Less than 5%")),6] <- 0.01
+df1[which(df1$intensity_value==c("5-24%")),6] <- 0.05
+df1[which(df1$intensity_value==c("25-49%")),6] <- 0.25
+df1[which(df1$intensity_value==c("50-74%")),6] <- 0.50
+df1[which(df1$intensity_value==c("75-94%")),6] <- 0.75
+df1[which(df1$intensity_value==c("95% or more")),6] <- 1
+
+
+
+###############
+df <- as.data.frame(cbind(NNflowering$site_id,NNflowering$individual_id,NNflowering$phenophase_status,as.numeric(format(datetxt, format = "%Y"))))
+colnames(df) <- c("site_id","individual_id","phenophase_status","year")
+df
+# removed phenophase status that were (-1)- which designate uncertainty
+df <- df[which(df$phenophase_status != -1),]
+# number of individuals flowering by year in migration pathway (at least 1 day)
+df1 <- df[which(df$phenophase_status == 1),]
+install.packages("dplyr")
+library(dplyr)
+x <- aggregate(df1,
+               by = list(df1$year),
+               FUN = n_distinct,
+               na.rm = T)
+plot(x$Group.1,x$individual_id, type = "b", 
+     xlab = "", 
+     ylab = "# of Individuals Flowering", 
+     main = c("Individual in flower at least 1 day "))
+# number of sites with individuals flowering by year
+plot(x$Group.1,x$site_id, type = "b", 
+     xlab = "", 
+     ylab = "# of Sites w Individuals Flowering", 
+     main = c("Sites w Individual in flower at least 1 day "))
+
+# number of days per year where at least 1 individual in flower
+x <- aggregate(df1,
+               by = list(df1$year),
+               FUN = sum,
+               na.rm=T)
+plot(x$Group.1,x$phenophase_status, type = "b", 
+     xlab = "", 
+     ylab = "Number of Days", 
+     main = c("At least 1 individual in flower"))
+
+
+#what proportion of individuals at a site were in flower
+
+
+########################################
 #write out file so I can plot in excel (sorry!!)
 #write.csv(NNflowering,"c:/NPN/Manuscripts/Working/Hudson_etal_monarch_stuff/NNflowering.csv")
-png("npn_flowering.png",6,6, type = "cairo",
-    #png("output/SPEI-3m_site.png",4,6, type = "cairo",
-    #png("output/SurfacePrecip_20thCent_1.5sd.png",4,6,
-    units = "in",res = 600, pointsize=10, family= "helvetica")
-#par(tck = .02)
-par(mfrow=c(6,1),mar = c(2, 4.1, 1, 0.5)) #c(5.1, 4.1, 4.1, 2.1) c(bottom, left, top, right))
-# read in monarch overwintering acreage data:
-mexicoarea <- read.table('Butterflies1994-2019.txt',header = T)
-mexicoarea[,1] <- 1994:2019
-mexicoarea <- mexicoarea[16:26,]#2009-2019 overlap with nectar
-mexicoareadetrend <- matrix(NA,nrow = length(2009:2019),ncol = 2)
-mexicoareadetrend[,2] <- lm(mexicoarea$MexicoArea~mexicoarea$Year)$residuals
-mexicoareadetrend[,1] <- 2009:2019 #1994:2012
-mexicoareadetrend <- data.frame(mexicoareadetrend)
-colnames(mexicoareadetrend) <- c("Year", "MexicoArea")
 
-plot(2009:2019,scale(mexicoarea$MexicoArea), type = "l", xlab = NULL, ylab = c("Mexico (scaled)"))
-lines(mexicoareadetrend, col = "gray")
-#abline(lm(scale(mexicoarea$MexicoArea) ~ mexicoareadetrend$Year), col = "red")
+# png("npn_flowering.png",6,6, type = "cairo",
+#     #png("output/SPEI-3m_site.png",4,6, type = "cairo",
+#     #png("output/SurfacePrecip_20thCent_1.5sd.png",4,6,
+#     units = "in",res = 600, pointsize=10, family= "helvetica")
+# par(mfrow=c(3,1),mar = c(2, 4.1, 1, 0.5)) #c(5.1, 4.1, 4.1, 2.1) c(bottom, left, top, right))
 
-x <- boxplot(last_yes_doy ~ last_yes_year,data = NNflowering, main="Last Yes of Open Flowers in bounding box", xlab="Year", ylab="DOY")
+NNflowering1 <- NNflowering
 
-#box_plot <- ggplot(NNflowering, aes(x = last_yes_year, group = last_yes_year, y = last_yes_doy))
-# Add the geometric object box plot
-# box_plot +
-#   geom_boxplot() +
-#   geom_jitter(shape = 15,
-#               color = "steelblue",
-#               position = position_jitter(width = 0.21)) +
-#   geom_smooth(method = "lm", se = FALSE) +
+datetxt <- as.Date(NNflowering1$observation_date)
+df <- data.frame(date = datetxt,
+                 year = as.numeric(format(datetxt, format = "%Y")),
+                 month = as.numeric(format(datetxt, format = "%m")),
+                 day = as.numeric(format(datetxt, format = "%d")))
+df1 <- as.data.frame(cbind(df$year,NNflowering1$day_of_year,NNflowering1$phenophase_status))
+colnames(df1) <- c("Year","DOY","Status")
+df1$Status <- as.character(df1$Status)
+#x <- boxplot(day_of_year ~ df$year,data = NNflowering, main="Open Flowers in bounding box", xlab="Year", ylab="DOY")
+
+library(ggplot2)
+#box_plot <- 
+#Add the geometric object box plot
+# ggplot(df1, aes(x = Year, group = Year, y = DOY)) +
+#   xlab("Year") +
+#   ylab("DOY") +
+#   geom_boxplot(aes(Status == "1")) +
+#   #geom_jitter(shape = 15,
+#   #            color = "light grey",
+#   #            size = 0.5,
+#   #            position = position_jitter(width = 0.21)) +
+#   geom_jitter(aes(Year, DOY, colour = Status), 
+#               position = position_jitter(width = .21, height=-0.7),
+#               size=2) +
+#   scale_color_manual(name="Legend", 
+#                      values=rev(c("green2", "light grey", "black"))) +
 #   scale_x_discrete(limits = 2009:2019) +
+#   scale_y_continuous(limits=c(244, 334), 
+#                      breaks = seq(244, 334, 10)) +
 #   theme_classic()
+#   
+#   
+  
+  
+###########################
+# color by -1,0, and 1
+
+NNflowering1 <- NNflowering[which(NNflowering$phenophase_status == 1),]
+
+datetxt <- as.Date(NNflowering1$observation_date)
+df <- data.frame(date = datetxt,
+                 year = as.numeric(format(datetxt, format = "%Y")),
+                 month = as.numeric(format(datetxt, format = "%m")),
+                 day = as.numeric(format(datetxt, format = "%d")))
+df1 <- as.data.frame(cbind(df$year,NNflowering1$day_of_year,NNflowering1$phenophase_status))
+colnames(df1) <- c("Year","DOY","Status")
+df2 <- df1
+
+#x <-hist(NNflowering$phenophase_status)
+#x$counts
 
 
-# first checked out mean
+ggplot(df1, aes(x = Year, group = Year, y = DOY)) +
+  xlab("Year") +
+  ylab("DOY") +
+  geom_boxplot(aes(Year, DOY)) +
+  geom_jitter(shape = 15,
+              color = "red",
+              size = 0.5,
+              position = position_jitter(width = 0.21)) +
+  scale_x_discrete(limits = 2009:2019) +
+  scale_y_continuous(limits=c(244, 334), 
+                     breaks = seq(240, 340, 20)) +
+  theme_classic()
 
-mean_doy <- aggregate(last_yes_doy ~ last_yes_year,data = NNflowering, FUN = mean, na.rm = T)
-plot(mean_doy, type = "l", xlab = NULL, ylab = c("Mean DOY"))
-#abline(lm(mean_doy$last_yes_doy ~ mean_doy$last_yes_year), col = "red")
+NNflowering1 <- NNflowering[which(NNflowering$phenophase_status == 0),]
 
-library(pracma)
-
-
-#plot(mean_doy$last_yes_year,scale(pracma::detrend(mean_doy$last_yes_doy)),type = "l", ylim = c(-2,2.5))
-
-
-
-library(Hmisc)
-rcorr(mexicoareadetrend$MexicoArea,pracma::detrend(mean_doy$last_yes_doy))
-
-#mean_doy <- aggregate(last_yes_doy ~ last_yes_year,data = NNflowering, FUN = median, na.rm = T)
-#plot(mean_doy, type = "l")
+datetxt <- as.Date(NNflowering1$observation_date)
+df <- data.frame(date = datetxt,
+                 year = as.numeric(format(datetxt, format = "%Y")),
+                 month = as.numeric(format(datetxt, format = "%m")),
+                 day = as.numeric(format(datetxt, format = "%d")))
+df1 <- as.data.frame(cbind(df$year,NNflowering1$day_of_year,NNflowering1$phenophase_status))
+colnames(df1) <- c("Year","DOY","Status")
 
 
-#box plot stats to try = 1) extreme of the lower whisker, 2) the lower hinge, 3) the median, 4) the upper hinge and 5) the extreme of the upper whisker
-# interquartile range ()
+#x <-hist(NNflowering$phenophase_status)
+#x$counts
 
-x$stats[3,]
-plot(mean_doy$last_yes_year,x$stats[3,],type = "l", ylab = c("Median DOY"), xlab = NULL)
-rcorr(mexicoareadetrend$MexicoArea,pracma::detrend(x$stats[3,]))
-rcorr(mexicoareadetrend$MexicoArea,x$stats[3,])
 
-x$stats[4,]
-plot(mean_doy$last_yes_year,x$stats[4,],type = "l", ylab = c("Upper Hinge"), xlab = NULL)
-#plot(mean_doy$last_yes_year,scale(pracma::detrend(x$stats[4,])),type = "l")
-rcorr(mexicoareadetrend$MexicoArea,pracma::detrend(x$stats[4,]))
-rcorr(mexicoareadetrend$MexicoArea,x$stats[4,])
+ggplot(df1, aes(x = Year, group = Year, y = DOY)) +
+  xlab("Year") +
+  ylab("DOY") +
+  geom_boxplot(aes(Year, DOY)) +
+  geom_jitter(shape = 15,
+              color = "grey",
+              size = 0.5,
+              position = position_jitter(width = 0.21)) +
+  scale_x_discrete(limits = 2009:2019) +
+  scale_y_continuous(limits=c(244, 334), 
+                     breaks = seq(240, 340, 20)) +
+  theme_classic()
 
-range_doy <- x$stats[4,]-x$stats[2,]
-plot(mean_doy$last_yes_year,range_doy,type = "l", ylab = c("Range DOY"), xlab = NULL)
-#plot(mean_doy$last_yes_year,scale(pracma::detrend(range_doy)),type = "l")
-#lines(mexicoareadetrend, col = "gray")
-rcorr(mexicoareadetrend$MexicoArea,pracma::detrend(range_doy))
-rcorr(mexicoareadetrend$MexicoArea,range_doy)
+###############
+# divide the number of 1s per region by the number of 0s per region for each year
 
+# df2 = 1s
+# df1 = 0s
+library(dplyr)
+df2 <- group_by(df2,Year) %>% summarise(Status = sum(Status))
+df1$Status <- rep(1,length(df1[,1]))
+df1 <- group_by(df1,Year) %>% summarise(Status = sum(Status))
+df2$Status/df1$Status
+plot(2009:2019,df2$Status/df1$Status, type = "b", xlab = "", ylab = "1s/0s")
+df2$Status/(df1$Status+df2$Status)
+plot(2009:2019,df2$Status/(df1$Status+df2$Status), type = "b", xlab = "", ylab = "1s/(1s+0s)", main = "#flowers observed/\n#observations attempted")
+
+
+###############
+
+# NNflowering1 <- NNflowering[which(NNflowering$phenophase_status == -1),]
+# 
+# datetxt <- as.Date(NNflowering1$observation_date)
+# df <- data.frame(date = datetxt,
+#                  year = as.numeric(format(datetxt, format = "%Y")),
+#                  month = as.numeric(format(datetxt, format = "%m")),
+#                  day = as.numeric(format(datetxt, format = "%d")))
+# df1 <- as.data.frame(cbind(df$year,NNflowering1$day_of_year,NNflowering1$phenophase_status))
+# colnames(df1) <- c("Year","DOY","Status")
+# 
+
+#x <-hist(NNflowering$phenophase_status)
+#x$counts
+
+
+# ggplot(df1, aes(x = Year, group = Year, y = DOY)) +
+#   xlab("Year") +
+#   ylab("DOY") +
+#   geom_boxplot(aes(Year, DOY)) +
+#   geom_jitter(shape = 15,
+#               color = "black",
+#               size = 0.5,
+#               position = position_jitter(width = 0.21)) +
+#   scale_x_discrete(limits = 2009:2019) +
+#   scale_y_continuous(limits=c(244, 334), 
+#                      breaks = seq(240, 340, 20)) +
+#   theme_classic()
 
