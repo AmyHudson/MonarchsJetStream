@@ -15,12 +15,11 @@ library(matrixStats)
 
 
 ##############
-#FIG1
 
-monarch_ts <- read.csv("MonarchTimeSeries.csv")
+monarch_ts <- read.csv("data/processed/MonarchTimeSeries.csv")
 monarch_ts <- monarch_ts[2:29,]
 
-png("figures/fig1_timeseriesplots.png",3,5,
+png("figures/timeseriesplots.png",3,5,
     units = "in",res = 600, pointsize=12, family= "helvetica")
 par(mfrow=c(4,1), mar = c(2,3,0.5,1))
 
@@ -58,10 +57,14 @@ legend("top", legend = c("August Roost Index, r=0.49","September Roost Index, r=
 
 dev.off()
 
+##############################
+
+#raw observations of roosting events collected by Journey North (as of 2020)
+
 roost <- read.csv("data/raw/monarch_journeynorth_Fall_Roost.csv")
 roost[which(roost$Longitude == -11051301.0),]$Longitude<- -110.5 #error at one observation in Journey North at Canelo, AZ, which is at -110.51 (I matched to tenths place like the other observations)
 
-png("figures/fig1_maps_jn.png",2,7,
+png("figures/maps_jn.png",2,7,
     units = "in",res = 600, pointsize=12, family= "helvetica")
 par(mfrow=c(4,1), mar = c(0,0,0,0))
 
@@ -86,89 +89,10 @@ if(i == 12){
 dev.off()
 
 
-
-gbif <- read.delim("data/raw/0292940-200613084148143.csv") #1994-2020
-gbif <- gbif[which(gbif$year>=2002),]
-
-png("figures/fig1_maps_gbif_2002-2020.png",2,7,
-    units = "in",res = 600, pointsize=12, family= "helvetica") #
-par(mfrow=c(4,1), mar = c(0,0,0,0))
-
-for (i in c(8,9,12)){
-
-  gbif1 <- gbif[which(gbif$month == i),]
-
-  
-  map("worldHires",c("Canada", "USA","Mexico"), xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
-  map.axes()
-  
-  ## add points
-  points(gbif1$decimalLongitude,gbif1$decimalLatitude, cex = 0.3, pch = 16, col = adjustcolor("grey", alpha.f=0.1))
-  
-  sub <- gbif1[which(gbif1$decimalLongitude >-105),]
-  sub <- sub[-which(sub$decimalLatitude <33 & sub$decimalLongitude >-85),]
-  
-  points(sub$decimalLongitude,sub$decimalLatitude, cex = 0.3, pch = 16, col = adjustcolor("orange", alpha.f=0.2))
-  points(mean(sub$decimalLongitude,na.rm = T), mean(sub$decimalLatitude, na.rm = T), pch=20, col="black",cex=2) 
-}
-dev.off()
+###############
 
 
-################
-# playing w detrending the Durham Fall roost time series
-monarch_ts2 <- monarch_ts[which(monarch_ts$Year>=1998 & monarch_ts$Year<=2020),]
-#detrend each index
-monarch_ts_detrend1 <- data.frame(pracma::detrend(as.matrix(monarch_ts2))) 
-rcorr(monarch_ts_detrend1$Mexico,monarch_ts_detrend1$Xerces_CA_Nov_OverWintering)
-plot(1998:2020,scale(monarch_ts_detrend1$Durham_CA_OctDec_FallRoost), ylim = c(-2,3), type = "h", lwd = "3")
-lines(1998:2020,scale(monarch_ts_detrend1$Xerces_CA_Nov_OverWintering), lty = c(2))
-lines(1998:2020,scale(monarch_ts_detrend1$Mexico))
-abline(h =0)
 
-legend("top", legend = c("Durham Fall Roost","Xerces Overwintering","Mexico Winter Acreage"), col = c("black","black","black"), lty = c(1,2,1), lwd = c(3,1,1),bg = "white",cex = 0.70, bty = "n")
-
-# try and detrend Durham values
-x<- lm(monarch_ts$Year~monarch_ts$Durham_CA_OctDec_FallRoost)
-as.numeric(x$residuals)
-y <- c(-15.8412578, -15.5984845, NA,  NA  ,-11.1285739,  -2.4226792 , -8.1040908,  NA,  NA,  NA, 4.3590306,  NA,   -4.0639715,  NA,  NA, -1.0639715,   0.4259987,  NA,  NA,  NA,  3.8469430,  NA,  NA,  NA,  8.5596269 ,  9.4705414,   9.6242293,  10.4906010,  11.4460583)
-z<- lm(monarch_ts$Year~y)
-# dplR doesn't let you have NAs in the middle of the series... I could play with the code to allow it...
-#library(dplR)
-#detrend.series(monarch_ts$Durham_CA_OctDec_FallRoost)
-z <- c(1.2412578 , 1.9984845, NA,  NA  ,0.5285739,  -7.1773208 , -0.4959092,  NA,  NA,  NA, -8.9590306,  NA,   1.4639715,  NA,  NA, 1.4639715,   0.9740013,  NA,  NA,  NA,  1.5530570,  NA,  NA,  NA,   0.8403731 , 0.9294586,  1.7757707,  1.9093990 , 1.9539417)
-rcorr(monarch_ts$Mexico,z)
-
-##################
-# playing w detrending the Durham Fall roost time series
-monarch_ts2 <- monarch_ts[which(monarch_ts$Year>=2001 & monarch_ts$Year<=2017),]
-#detrend each index
-monarch_ts_detrend1 <- data.frame(pracma::detrend(as.matrix(monarch_ts2))) 
-rcorr(monarch_ts_detrend1$Mexico,monarch_ts_detrend1$Xerces_CA_Nov_OverWintering)
-
-
-plot(2002:2020,scale(monarch_ts_detrend1$Durham_CA_OctDec_FallRoost), ylim = c(-2,3), type = "h", lwd = "3")
-lines(2002:2020,scale(monarch_ts_detrend1$Xerces_CA_Nov_OverWintering), lty = c(2))
-lines(2002:2020,scale(monarch_ts_detrend1$Mexico))
-abline(h = 0)
-
-
-legend("top", legend = c("Durham Fall Roost","Xerces Overwintering","Mexico Winter Acreage"), col = c("black","black","black"), lty = c(1,2,1), lwd = c(3,1,1),bg = "white",cex = 0.70, bty = "n")
-
-
-# try and detrend Durham values
-x<- lm(monarch_ts2$Year~monarch_ts2$Durham_CA_OctDec_FallRoost)
-as.numeric(x$residuals)
-x$residuals
-y <- c( 0.1064104,  NA,  -8.7426189,  NA,  NA, -5.7426189,   -4.2326218,  NA,  NA,  NA,  -0.8353456 ,  NA,  NA,  NA ,3.9064683,  4.8137416,  4.9328375,  5.7937474)
-rcorr(monarch_ts_detrend1$Mexico,y)
-
-
-z<- lm(monarch_ts2$Year~y)
-# dplR doesn't let you have NAs in the middle of the series... I could play with the code to allow it...
-#library(dplR)
-#detrend.series(monarch_ts$Durham_CA_OctDec_FallRoost)
-z <- c(1.2412578 , 1.9984845, NA,  NA  ,0.5285739,  -7.1773208 , -0.4959092,  NA,  NA,  NA, -8.9590306,  NA,   1.4639715,  NA,  NA, 1.4639715,   0.9740013,  NA,  NA,  NA,  1.5530570,  NA,  NA,  NA,   0.8403731 , 0.9294586,  1.7757707,  1.9093990 , 1.9539417)
-rcorr(monarch_ts$Mexico,z)
 
 ########################################
 # plot summer indices and summer jet stream, show correlation values

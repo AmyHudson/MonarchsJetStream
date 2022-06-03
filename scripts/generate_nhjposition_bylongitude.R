@@ -1,10 +1,10 @@
 # modified from Flurin's script: position_jetstream_global_new.R
-# downloaded U-Wind Monthly Mean Pressure: uwnd.mon.mean.nc from https://psl.noaa.gov/data/gridded/data.ncep.reanalysis.pressure.html on May 2, 2021
+# downloaded U-Wind Monthly Mean Pressure: uwnd.mon.mean.nc from https://psl.noaa.gov/data/gridded/data.ncep.reanalysis.pressure.html , covering jan1948-apr2022, and renamed
 
 library(ncdf4)
 
 
-file.ncep <- nc_open("data/uwnd.mon.mean.nc")
+file.ncep <- nc_open("data/raw/uwnd.mon.mean_NCEPNCAR_pressurelevels_1948jan2022apr.nc") # uwnd.mon.mean_NCEPNCAR_pressurelevels.nc
 data.ncep <- ncvar_get(file.ncep)
 
 lat.ncep <- file.ncep$dim[[2]]$vals; 
@@ -23,4 +23,4 @@ for(x in 1:dim(maxpos.ncep)[1]){for(y in 1:dim(maxpos.ncep)[2]){maxlocation.ncep
 #maxspeed.ncep.ts <- ts(t(maxspeed.ncep), start = 1948, frequency = 12)
 maxlocation.ncep.ts <- ts(t(maxlocation.ncep), start = 1948, frequency = 12)
 
-write.table(maxlocation.ncep.ts, file = "data/processed/NHJ_position_global_1948jan-2021apr_ncepncar.txt", sep = "\t", col.names = paste(as.character(lon.ncep),"_degE",sep=""), row.names = F, quote = F)
+write.table(maxlocation.ncep.ts, file = "data/processed/NHJ_position_global_1948jan-2022apr_ncepncar.txt", sep = "\t", col.names = paste(as.character(lon.ncep),"_degE",sep=""), row.names = F, quote = F)
