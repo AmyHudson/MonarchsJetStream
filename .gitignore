@@ -2,3 +2,6 @@
 .Rhistory
 .RData
 .Ruserdata
+*.nc
+0076011-200613084148143.csv
+0292940-200613084148143.csv

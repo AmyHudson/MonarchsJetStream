@@ -1,12 +1,21 @@
 # MonarchsJetStream
 This repository is for identifying monarch and jet stream relationships.
 
-Fall Migration Path Phenology analysis needs:
 
-(1) npn.R
-(2) site_phenometrics_data.csv #from datasheet_1595346252951/site_phenometrics_data.csv
-(3) Butterflies1994-2019.txt
 
-Files needed to run code:
+## Data, sources and citations:
 
-cru_ts4.03.1901.2018.tmp.dat.nc
+### Monarch Data
+Butterflies1994-2020.txt and 2021 from recent [world wildlife fund- mexico annual report](https://files.worldwildlife.org/wwfcmsprod/files/Publication/file/7907txsoa8_Monarch_Butterfly_Survey_2021_2022_May24_2022_.pdf) 
+
+### Climate Data
+
+#### Surface temperature, precipitation, spei, 
+
+#### Surface u and v wind velocities
+
+Kalnay et al.,The NCEP/NCAR 40-year reanalysis project, Bull. Amer. Meteor. Soc., 77, 437-470, 1996.
+
+Please note: If you acquire NCEP Reanalysis Derived data products from PSL, we ask that you acknowledge us in your use of the data. This may be done by including text such as NCEP Reanalysis Derived data provided by the NOAA/OAR/ESRL PSL, Boulder, Colorado, USA, from their Web site at / in any documents or publications using these data. We would also appreciate receiving a copy of the relevant publications.
+
+Download from https://www.psl.noaa.gov/data/gridded/data.ncep.reanalysis.derived.surface.html on 5/25/2022
