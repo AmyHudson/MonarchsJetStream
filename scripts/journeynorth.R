@@ -46,12 +46,14 @@ rcorr(monarch_ts_detrend$Mexico,monarch_ts_detrend$JN_ROOST_9)
 rcorr(monarch_ts_detrend$JN_ROOST_8,monarch_ts_detrend$JN_ROOST_9)
 
 
+
 plot(2002:2020, scale(monarch_ts_detrend$JN_ROOST_8), lty = 2, lwd = 1, col = "black", type = "l", ylim = c(-3, 3), xaxs="i",
      yaxs="i", xlab = "", ylab = "")
 lines(2002:2020, scale(monarch_ts_detrend$JN_ROOST_9), lty = 3,lwd = 1, col = "black")
 lines(2002:2020, scale(monarch_ts_detrend$Mexico), lwd = 1, col = "black")
 abline(h = 0)
 legend("top", legend = c("August Roost Index, r=0.49","September Roost Index, r=0.54","Winter Area Index"), col = c("black","black","black"), lty = c(2,3,1), lwd = c(1,1,1),bg = "white",cex = 0.70, bty = "n")
+
 
 
 
@@ -238,41 +240,9 @@ dev.off()
 
 ###############
 
-library(pracma)
-
-peak <- read.csv("~/Desktop/monarch_journeynorth_PEAK.csv") #2000 has a lot of 0s
-# peak$Number estimates start in 2011; roost start in 2002 but patchy.
-
-peak1 <- peak[which((peak$Month == 8 | peak$Month == 9) & (peak$Latitude>35 & peak$Latitude<55) & peak$Longitude>-100 & -70>peak$Longitude),]
-as.numeric(table(peak1$Year))
-peak1 <- as.numeric(pracma::detrend(as.matrix(as.numeric(table(peak1$Year)))))
-JN_PEAK_89 <- peak1
-
-
-#plot(2000:2020, scale(peak1), type = "l",  xaxs="i",
-#     yaxs="i", xlab = "", ylab = "", ylim = c(-3,3), lty = 3)
-#abline(h = 0)
-
-peak1 <- peak[which((peak$Month == 8) & (peak$Latitude>35 & peak$Latitude<55) & peak$Longitude>-100 & -70>peak$Longitude),]
-t <- as.numeric(table(peak1$Year)) # 2008 is missing, so I added it in as 0. 
-peak1 <- c(12, 23,  4,  6,  0, 23, 26, 39, 0, 12, 23,  8, 11,  3, 13, 11,  4, 16, 46, 21)
-peak1 <- as.numeric(pracma::detrend(as.matrix(peak1)))
-
-JN_PEAK_8 <- peak1
-plot(2000:2020, scale(peak1), type = "l",  xaxs="i",
-     yaxs="i", xlab = "", ylab = "", ylim = c(-3,3), lty = 1)
-abline(h = 0)
-
-#lines(2000:2020, scale(peak1), lty = 1,col = "black")
-
-peak1 <- peak[which((peak$Month == 8 | (peak$Month == 9 & peak$Day <=15)) & (peak$Latitude>35 & peak$Latitude<55) & peak$Longitude>-100 & -70>peak$Longitude),]
-peak1 <- as.numeric(pracma::detrend(as.matrix(as.numeric(table(peak1$Year)))))
-JN_PEAK_8.5 <- peak1
-#lines(2000:2020, scale(peak1), lty = 2,col = "black")
-
 
 ##############
-roost <- read.csv("~/Desktop/monarch_journeynorth_Fall_Roost.csv")
+roost <- read.csv("data/raw/monarch_journeynorth_Fall_Roost.csv")
 library(dplR)
 roost1 <- roost[which(roost$Month == 8),]
 #roost1 <- roost[which(roost$Month == 9),]

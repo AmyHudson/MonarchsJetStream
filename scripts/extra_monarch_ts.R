@@ -1,6 +1,41 @@
 # extra monarch time series and explorations with jet stream and correlation with winter acreage
 
 ################
+
+library(pracma)
+
+peak <- read.csv("~/Desktop/OLD/monarch_journeynorth_PEAK.csv") #2000 has a lot of 0s
+# peak$Number estimates start in 2011; roost start in 2002 but patchy.
+
+peak1 <- peak[which((peak$Month == 8 | peak$Month == 9) & (peak$Latitude>35 & peak$Latitude<55) & peak$Longitude>-100 & -70>peak$Longitude),]
+as.numeric(table(peak1$Year))
+peak1 <- as.numeric(pracma::detrend(as.matrix(as.numeric(table(peak1$Year)))))
+JN_PEAK_89 <- peak1
+
+
+#plot(2000:2020, scale(peak1), type = "l",  xaxs="i",
+#     yaxs="i", xlab = "", ylab = "", ylim = c(-3,3), lty = 3)
+#abline(h = 0)
+
+peak1 <- peak[which((peak$Month == 8) & (peak$Latitude>35 & peak$Latitude<55) & peak$Longitude>-100 & -70>peak$Longitude),]
+t <- as.numeric(table(peak1$Year)) # 2008 is missing, so I added it in as 0. 
+peak1 <- c(12, 23,  4,  6,  0, 23, 26, 39, 0, 12, 23,  8, 11,  3, 13, 11,  4, 16, 46, 21)
+peak1 <- as.numeric(pracma::detrend(as.matrix(peak1)))
+
+JN_PEAK_8 <- peak1
+plot(2000:2020, scale(peak1), type = "l",  xaxs="i",
+     yaxs="i", xlab = "", ylab = "", ylim = c(-3,3), lty = 1)
+abline(h = 0)
+
+#lines(2000:2020, scale(peak1), lty = 1,col = "black")
+
+peak1 <- peak[which((peak$Month == 8 | (peak$Month == 9 & peak$Day <=15)) & (peak$Latitude>35 & peak$Latitude<55) & peak$Longitude>-100 & -70>peak$Longitude),]
+peak1 <- as.numeric(pracma::detrend(as.matrix(as.numeric(table(peak1$Year)))))
+JN_PEAK_8.5 <- peak1
+#lines(2000:2020, scale(peak1), lty = 2,col = "black")
+
+
+################
 # playing w detrending the Durham Fall roost time series
 monarch_ts2 <- monarch_ts[which(monarch_ts$Year>=1998 & monarch_ts$Year<=2020),]
 #detrend each index
