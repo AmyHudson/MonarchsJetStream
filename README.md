@@ -31,4 +31,6 @@ I also downloaded u and v wind at different atmospheric pressures from https://p
 To generate the latitudinal position of the maximum zonal wind speeds at 300hPa (data/processed/NHJ_position_global_1948jan-2022apr_ncepncar.txt), scripts/generate_nhjposition_bylongitude.R used
 data/raw/uwnd.mon.mean_NCEPNCAR_pressurelevels_1948jan2022apr.nc 
 
+### Figures
 
+jnroost89_mx_mapsanddetrendedtimeseries.png was created in powerpoint by merging timeseriesplots and maps_jn.png

@@ -90,3 +90,99 @@ z<- lm(monarch_ts2$Year~y)
 #detrend.series(monarch_ts$Durham_CA_OctDec_FallRoost)
 z <- c(1.2412578 , 1.9984845, NA,  NA  ,0.5285739,  -7.1773208 , -0.4959092,  NA,  NA,  NA, -8.9590306,  NA,   1.4639715,  NA,  NA, 1.4639715,   0.9740013,  NA,  NA,  NA,  1.5530570,  NA,  NA,  NA,   0.8403731 , 0.9294586,  1.7757707,  1.9093990 , 1.9539417)
 rcorr(monarch_ts$Mexico,z)
+
+##################################
+
+##########################
+monarch <- read.delim("data/raw/0292940-200613084148143.csv") #2020
+
+colnames(monarch)
+unique(monarch$year)
+# subset for year 
+monarch_dec <- monarch[which(monarch$year>=1993 &monarch$year<=2019),]
+monarch_dec <- monarch_dec[which(monarch_dec$month == 12),]
+
+monarch_nodec <- monarch[which(monarch$year>=1994 &monarch$year<=2020),]
+# grab all observations that are geo referenced for DJF
+
+
+i = 3
+monarch_sub <- monarch_nodec[which(monarch_nodec$month == i),]
+monarch_sub <- monarch_sub[which(monarch_sub$decimalLongitude >-105),]
+
+monarch_sub <- monarch_sub[-which(monarch_sub$decimalLatitude <30 & monarch_sub$decimalLongitude >-85),]
+
+map("worldHires",c("Canada", "USA","Mexico"), xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map.axes()
+#title("August") this is mid line
+
+points(monarch_sub$decimalLongitude,monarch_sub$decimalLatitude, cex = 0.3, pch = 16, col = adjustcolor("orange", alpha.f=0.2))
+points(mean(monarch_sub$decimalLongitude,na.rm = T), mean(monarch_sub$decimalLatitude, na.rm = T), pch=20, col="black",cex=2) 
+
+
+table(monarch_sub$year)
+as.numeric(table(monarch_sub$year))
+june <- c(1,  24,   6, 166,  46 , 0,0, 1,0,   4  , 6  , 3   ,7  , 5  , 8 , 13,  45 , 14  ,35, 62,  78, 270 ,537 ,990)
+feb <- c(11,  12 ,0, 41 ,0,0,0,  2 ,0,0 , 2 ,0,  1   ,1 ,  2   ,7   ,1 , 13 , 14, 113, 105, 235 ,460)
+
+#how many unique observers per year?
+num_uniquelocations <- NA 
+for (i in 1996:2019){
+  test <- monarch_sub[which(monarch_sub$year == i),]
+  num_uniquelocations[i-1995] <- length(unique(test$decimalLatitude))  
+}
+
+num_uniquelocations <- num_uniquelocations[which(num_uniquelocations!=0)]
+plot(table(monarch_sub$year)/num_uniquelocations, type = "l")
+library(dplR)
+junedetrend <- detrend.series(june)
+junedetrend <- detrend.series(feb)
+
+mexicoarea <- read.table('Butterflies1994-2019.txt',header = T)
+mexicoarea[,1] <- 1994:2019
+#mexicoarea <- mexicoarea[3:26,]
+mexicoarea <- mexicoarea[2:25,] #correlate Feb w previous year
+
+mexicoareadetrend <- matrix(NA,nrow = length(1996:2019),ncol = 2)
+
+mexicoareadetrend[,2] <- lm(mexicoarea$MexicoArea~mexicoarea$Year)$residuals
+mexicoareadetrend <- data.frame(mexicoareadetrend)
+colnames(mexicoareadetrend) <- c("Year", "MexicoArea")
+library(Hmisc)
+
+rcorr(junedetrend$Friedman,mexicoareadetrend$MexicoArea) 
+
+junedetrend <- detrend.series(june[7:24])
+rcorr(junedetrend$Friedman,roost1) 
+
+
+##########################
+
+#gbif 
+
+
+gbif <- read.delim("data/raw/0292940-200613084148143.csv") #1994-2020
+gbif <- gbif[which(gbif$year>=2002),]
+
+png("figures/gbif_2002-2020.png",2,7,
+    units = "in",res = 600, pointsize=12, family= "helvetica") #
+par(mfrow=c(4,1), mar = c(0,0,0,0))
+
+for (i in c(8,9,12)){
+  
+  gbif1 <- gbif[which(gbif$month == i),]
+  
+  
+  map("worldHires",c("Canada", "USA","Mexico"), xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+  map.axes()
+  
+  ## add points
+  points(gbif1$decimalLongitude,gbif1$decimalLatitude, cex = 0.3, pch = 16, col = adjustcolor("grey", alpha.f=0.1))
+  
+  sub <- gbif1[which(gbif1$decimalLongitude >-105),]
+  sub <- sub[-which(sub$decimalLatitude <33 & sub$decimalLongitude >-85),]
+  
+  points(sub$decimalLongitude,sub$decimalLatitude, cex = 0.3, pch = 16, col = adjustcolor("orange", alpha.f=0.2))
+  points(mean(sub$decimalLongitude,na.rm = T), mean(sub$decimalLatitude, na.rm = T), pch=20, col="black",cex=2) 
+}
+dev.off()

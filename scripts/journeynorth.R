@@ -59,11 +59,11 @@ legend("top", legend = c("August Roost Index, r=0.49","September Roost Index, r=
 
 dev.off()
 
-##############################
+########################################
 
 #raw observations of roosting events collected by Journey North (as of 2020)
 
-roost <- read.csv("data/raw/monarch_journeynorth_Fall_Roost.csv")
+roost <- read.csv("data/raw/monarch_journeynorth_Fall_Roost.csv", fileEncoding="UTF-8-BOM")
 roost[which(roost$Longitude == -11051301.0),]$Longitude<- -110.5 #error at one observation in Journey North at Canelo, AZ, which is at -110.51 (I matched to tenths place like the other observations)
 
 png("figures/maps_jn.png",2,7,
@@ -91,7 +91,7 @@ if(i == 12){
 dev.off()
 
 
-###############
+
 
 
 
@@ -241,7 +241,7 @@ dev.off()
 ###############
 
 
-##############
+###############
 roost <- read.csv("data/raw/monarch_journeynorth_Fall_Roost.csv")
 library(dplR)
 roost1 <- roost[which(roost$Month == 8),]
