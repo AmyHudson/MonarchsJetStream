@@ -15,7 +15,7 @@ library(RColorBrewer)
 
 library(ncdf4)
 
-monarch_ts <- read.csv("MonarchTimeSeries.csv")
+monarch_ts <- read.csv("data/processed/MonarchTimeSeries.csv")
 monarch_ts1 <- monarch_ts[which(monarch_ts$Year>=2002 & monarch_ts$Year<=2019),]
 #detrend each index
 monarch_ts_detrend <- data.frame(pracma::detrend(as.matrix(monarch_ts1)))
@@ -23,13 +23,15 @@ monarch_ts_detrend <- data.frame(pracma::detrend(as.matrix(monarch_ts1)))
 JN_ROOST_8 <- monarch_ts_detrend$JN_ROOST_8
 
 JN_ROOST_9 <- monarch_ts_detrend$JN_ROOST_9
+mexicoarea <- monarch_ts_detrend$Mexico
+
 #################################################################
 ## CRU TMIN
 
 library(raster)
 
-a <- nc_open("~/Downloads/cru_ts4.04.1901.2019.tmn.dat.nc")
-dset <- raster("~/Downloads/cru_ts4.04.1901.2019.tmn.dat.nc")
+a <- nc_open("data/raw/cru_ts4.06.1901.2021.tmn.dat.nc")
+dset <- raster("data/raw/cru_ts4.06.1901.2021.tmn.dat.nc")
 proj4string(dset)
 
 print(dset)
@@ -45,9 +47,9 @@ month <- rep(1:12,length(1901:2019))#repeat 1:12 116 times
 #repeat 1901:2019 12 times and make an array for the year vector
 time <- cbind(year,month)
 
-xdim <- round(a$dim[[2]]$vals, digits = 5)# lon
-ydim <- round(a$dim[[3]]$vals, digits = 5) # lat
-zdim <- a$dim[[1]]$vals # time
+xdim <- round(a$dim[[1]]$vals, digits = 5)# lon
+ydim <- round(a$dim[[2]]$vals, digits = 5) # lat
+zdim <- a$dim[[3]]$vals # time
 xs <- which(xdim == -124.75)
 ys <-  which(ydim == 15.25) #allows us to crop to the overwintering acreage 
 zs <- which(zdim == 380) 
@@ -70,7 +72,7 @@ time <- time[which(time[,1] >=2002 & time[,1] <=2019),]
 
 #################################################################
 
-png("fig_mex_corr_monthlytemp_tmin.png",8,13,
+png("mex_corr_monthly_tmin.png",8,13,
     units = "in",res = 600, pointsize=20, family= "helvetica")
 #par(mfrow=c(1,2), tcl=-0.5, family="serif", mai=c(0,0,0,0),mar = c(0, 0, 0, 0))
 par(mfrow=c(4,3))#,mar = c(0, 0, 0, 0))
@@ -92,9 +94,16 @@ rho <- NA[length(mon1)]
 pval <- NA[length(mon1)]
 # 
 for (i in 1:length(mon1detrend)){
-  rho[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$r[1,2]
-  pval[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$P[1,2]
+  rho[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$r[1,2]
+  pval[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$P[1,2]
 }
+
+global_alpha <- 0.1
+
+na.omit(pval)[which(na.omit(pval) < 2*global_alpha*rank(na.omit(pval))/length(na.omit(pval)))]
+pval 
+
+# add pixels for global significance threshold
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
@@ -120,14 +129,16 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F) 
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
+#map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
+#map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
 plot(rotate3, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend = F)
-text(-65,15, "JAN",adj = c(1,0),cex = 1.5)
+map("worldHires", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = T) 
+#legend(-65,15, "JAN", bg = "white", adj = 0.2) #box.col = NA
+text(-65,15, "JAN",adj = c(1,0),cex = 1.5, bg = "white")
 
 plot(rotate3, legend.only = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend.width=1, legend.shrink=1,legend.args=list(text=c(expression(paste(rho,"\n, p<0.1"))),side=3, line=.25, cex=1), axis.args = list(cex.axis = 1),horiz=F)
 
@@ -148,8 +159,8 @@ rho <- NA[length(mon1)]
 pval <- NA[length(mon1)]
 # 
 for (i in 1:length(mon1detrend)){
-  rho[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$r[1,2]
-  pval[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$P[1,2]
+  rho[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$r[1,2]
+  pval[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$P[1,2]
 }
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
@@ -200,8 +211,8 @@ rho <- NA[length(mon1)]
 pval <- NA[length(mon1)]
 # 
 for (i in 1:length(mon1detrend)){
-  rho[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$r[1,2]
-  pval[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$P[1,2]
+  rho[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$r[1,2]
+  pval[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$P[1,2]
 }
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
@@ -253,8 +264,8 @@ rho <- NA[length(mon1)]
 pval <- NA[length(mon1)]
 # 
 for (i in 1:length(mon1detrend)){
-  rho[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$r[1,2]
-  pval[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$P[1,2]
+  rho[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$r[1,2]
+  pval[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$P[1,2]
 }
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
@@ -306,8 +317,8 @@ rho <- NA[length(mon1)]
 pval <- NA[length(mon1)]
 # 
 for (i in 1:length(mon1df)){
-  rho[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$r[1,2]
-  pval[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$P[1,2]
+  rho[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$r[1,2]
+  pval[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$P[1,2]
 }
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
@@ -359,8 +370,8 @@ rho <- NA[length(mon1)]
 pval <- NA[length(mon1)]
 # 
 for (i in 1:length(mon1df)){
-  rho[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$r[1,2]
-  pval[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$P[1,2]
+  rho[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$r[1,2]
+  pval[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$P[1,2]
 }
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
@@ -412,8 +423,8 @@ rho <- NA[length(mon1)]
 pval <- NA[length(mon1)]
 # 
 for (i in 1:length(mon1df)){
-  rho[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$r[1,2]
-  pval[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$P[1,2]
+  rho[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$r[1,2]
+  pval[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$P[1,2]
 }
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
@@ -465,8 +476,8 @@ rho <- NA[length(mon1)]
 pval <- NA[length(mon1)]
 # 
 for (i in 1:length(mon1df)){
-  rho[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$r[1,2]
-  pval[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$P[1,2]
+  rho[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$r[1,2]
+  pval[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$P[1,2]
 }
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
@@ -519,8 +530,8 @@ rho <- NA[length(mon1)]
 pval <- NA[length(mon1)]
 # 
 for (i in 1:length(mon1df)){
-  rho[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$r[1,2]
-  pval[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$P[1,2]
+  rho[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$r[1,2]
+  pval[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$P[1,2]
 }
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
@@ -572,8 +583,8 @@ rho <- NA[length(mon1)]
 pval <- NA[length(mon1)]
 # 
 for (i in 1:length(mon1df)){
-  rho[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$r[1,2]
-  pval[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$P[1,2]
+  rho[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$r[1,2]
+  pval[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$P[1,2]
 }
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
@@ -2195,8 +2206,8 @@ dev.off()
 
 library(raster)
 
-a <- nc_open("~/Downloads/cru_ts4.04.1901.2019.tmx.dat.nc")
-dset <- raster("~/Downloads/cru_ts4.04.1901.2019.tmx.dat.nc")
+a <- nc_open("data/raw/cru_ts4.06.1901.2021.tmx.dat.nc")
+dset <- raster("data/raw/cru_ts4.06.1901.2021.tmx.dat.nc")
 proj4string(dset)
 
 print(dset)
@@ -2259,8 +2270,8 @@ rho <- NA[length(mon1)]
 pval <- NA[length(mon1)]
 # 
 for (i in 1:length(mon1detrend)){
-  rho[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$r[1,2]
-  pval[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$P[1,2]
+  rho[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$r[1,2]
+  pval[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$P[1,2]
 }
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
@@ -2315,8 +2326,8 @@ rho <- NA[length(mon1)]
 pval <- NA[length(mon1)]
 # 
 for (i in 1:length(mon1detrend)){
-  rho[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$r[1,2]
-  pval[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$P[1,2]
+  rho[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$r[1,2]
+  pval[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$P[1,2]
 }
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
@@ -2367,8 +2378,8 @@ rho <- NA[length(mon1)]
 pval <- NA[length(mon1)]
 # 
 for (i in 1:length(mon1detrend)){
-  rho[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$r[1,2]
-  pval[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$P[1,2]
+  rho[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$r[1,2]
+  pval[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$P[1,2]
 }
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
@@ -2420,8 +2431,8 @@ rho <- NA[length(mon1)]
 pval <- NA[length(mon1)]
 # 
 for (i in 1:length(mon1detrend)){
-  rho[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$r[1,2]
-  pval[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$P[1,2]
+  rho[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$r[1,2]
+  pval[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$P[1,2]
 }
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
@@ -2473,8 +2484,8 @@ rho <- NA[length(mon1)]
 pval <- NA[length(mon1)]
 # 
 for (i in 1:length(mon1df)){
-  rho[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$r[1,2]
-  pval[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$P[1,2]
+  rho[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$r[1,2]
+  pval[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$P[1,2]
 }
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
@@ -2526,8 +2537,8 @@ rho <- NA[length(mon1)]
 pval <- NA[length(mon1)]
 # 
 for (i in 1:length(mon1df)){
-  rho[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$r[1,2]
-  pval[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$P[1,2]
+  rho[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$r[1,2]
+  pval[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$P[1,2]
 }
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
@@ -2579,8 +2590,8 @@ rho <- NA[length(mon1)]
 pval <- NA[length(mon1)]
 # 
 for (i in 1:length(mon1df)){
-  rho[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$r[1,2]
-  pval[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$P[1,2]
+  rho[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$r[1,2]
+  pval[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$P[1,2]
 }
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
@@ -2632,8 +2643,8 @@ rho <- NA[length(mon1)]
 pval <- NA[length(mon1)]
 # 
 for (i in 1:length(mon1df)){
-  rho[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$r[1,2]
-  pval[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$P[1,2]
+  rho[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$r[1,2]
+  pval[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$P[1,2]
 }
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
@@ -2686,8 +2697,8 @@ rho <- NA[length(mon1)]
 pval <- NA[length(mon1)]
 # 
 for (i in 1:length(mon1df)){
-  rho[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$r[1,2]
-  pval[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$P[1,2]
+  rho[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$r[1,2]
+  pval[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$P[1,2]
 }
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
@@ -2739,8 +2750,8 @@ rho <- NA[length(mon1)]
 pval <- NA[length(mon1)]
 # 
 for (i in 1:length(mon1df)){
-  rho[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$r[1,2]
-  pval[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$P[1,2]
+  rho[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$r[1,2]
+  pval[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$P[1,2]
 }
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
@@ -4416,8 +4427,8 @@ dev.off()
 
 library(raster)
 
-a <- nc_open("~/Downloads/cru_ts4.04.1901.2019.pre.dat.nc")
-dset <- raster("~/Downloads/cru_ts4.04.1901.2019.pre.dat.nc")
+a <- nc_open("data/raw/cru_ts4.06.1901.2021.pre.dat.nc")
+dset <- raster("data/raw/cru_ts4.06.1901.2021.pre.dat.nc")
 proj4string(dset)
 
 print(dset)
@@ -4480,8 +4491,8 @@ rho <- NA[length(mon1)]
 pval <- NA[length(mon1)]
 # 
 for (i in 1:length(mon1detrend)){
-  rho[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$r[1,2]
-  pval[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$P[1,2]
+  rho[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$r[1,2]
+  pval[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$P[1,2]
 }
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
@@ -4536,8 +4547,8 @@ rho <- NA[length(mon1)]
 pval <- NA[length(mon1)]
 # 
 for (i in 1:length(mon1detrend)){
-  rho[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$r[1,2]
-  pval[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$P[1,2]
+  rho[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$r[1,2]
+  pval[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$P[1,2]
 }
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
@@ -4588,8 +4599,8 @@ rho <- NA[length(mon1)]
 pval <- NA[length(mon1)]
 # 
 for (i in 1:length(mon1detrend)){
-  rho[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$r[1,2]
-  pval[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$P[1,2]
+  rho[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$r[1,2]
+  pval[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$P[1,2]
 }
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
@@ -4641,8 +4652,8 @@ rho <- NA[length(mon1)]
 pval <- NA[length(mon1)]
 # 
 for (i in 1:length(mon1detrend)){
-  rho[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$r[1,2]
-  pval[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$P[1,2]
+  rho[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$r[1,2]
+  pval[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$P[1,2]
 }
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
@@ -4694,8 +4705,8 @@ rho <- NA[length(mon1)]
 pval <- NA[length(mon1)]
 # 
 for (i in 1:length(mon1df)){
-  rho[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$r[1,2]
-  pval[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$P[1,2]
+  rho[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$r[1,2]
+  pval[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$P[1,2]
 }
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
@@ -4747,8 +4758,8 @@ rho <- NA[length(mon1)]
 pval <- NA[length(mon1)]
 # 
 for (i in 1:length(mon1df)){
-  rho[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$r[1,2]
-  pval[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$P[1,2]
+  rho[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$r[1,2]
+  pval[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$P[1,2]
 }
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
@@ -4800,8 +4811,8 @@ rho <- NA[length(mon1)]
 pval <- NA[length(mon1)]
 # 
 for (i in 1:length(mon1df)){
-  rho[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$r[1,2]
-  pval[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$P[1,2]
+  rho[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$r[1,2]
+  pval[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$P[1,2]
 }
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
@@ -4853,8 +4864,8 @@ rho <- NA[length(mon1)]
 pval <- NA[length(mon1)]
 # 
 for (i in 1:length(mon1df)){
-  rho[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$r[1,2]
-  pval[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$P[1,2]
+  rho[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$r[1,2]
+  pval[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$P[1,2]
 }
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
@@ -4907,8 +4918,8 @@ rho <- NA[length(mon1)]
 pval <- NA[length(mon1)]
 # 
 for (i in 1:length(mon1df)){
-  rho[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$r[1,2]
-  pval[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$P[1,2]
+  rho[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$r[1,2]
+  pval[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$P[1,2]
 }
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
@@ -4960,8 +4971,8 @@ rho <- NA[length(mon1)]
 pval <- NA[length(mon1)]
 # 
 for (i in 1:length(mon1df)){
-  rho[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$r[1,2]
-  pval[i]<- rcorr(mon1detrend[,i],mexicoareadetrend_roost$MexicoArea,type = c("spearman"))$P[1,2]
+  rho[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$r[1,2]
+  pval[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$P[1,2]
 }
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
