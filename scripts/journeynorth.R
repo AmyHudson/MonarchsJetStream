@@ -74,14 +74,28 @@ for (i in c(8,9,12)){
 roost1 <- roost[which(roost$Month == i),]
 
 
-map("worldHires",c("Canada", "USA","Mexico"), xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires",c("Canada", "USA","Mexico"), xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 
 ## add points
 points(roost1$Longitude,roost1$Latitude, cex = 0.3, pch = 16, col = adjustcolor("grey", alpha.f=0.1))
 points(roost1$Longitude,roost1$Latitude, cex = 0.3, pch = 16, col = adjustcolor("orange", alpha.f=0.2))
-if(i == 8 | i == 9){
+if(i == 8){
   points(mean(roost1$Longitude,na.rm = T), mean(roost1$Latitude, na.rm = T), pch=20, col="black",cex=2) 
+  
+  xx = c(-100,-78,-78,-100)
+  yy = c(40,40,48,48)
+  polygon(xx,yy,border="black",lwd = 2)
+  
+}
+
+if(i == 9){
+  points(mean(roost1$Longitude,na.rm = T), mean(roost1$Latitude, na.rm = T), pch=20, col="black",cex=2) 
+  
+  xx = c(-105,-95,-95,-78,-78,-105)
+  yy = c(30,30,38,38,46,46)
+  polygon(xx,yy,border="black",lwd = 2)
+  
 }
 
 if(i == 12){
@@ -242,7 +256,8 @@ dev.off()
 
 
 ###############
-roost <- read.csv("data/raw/monarch_journeynorth_Fall_Roost.csv")
+roost <- read.csv("data/raw/monarch_journeynorth_Fall_Roost.csv", fileEncoding="UTF-8-BOM")
+
 library(dplR)
 roost1 <- roost[which(roost$Month == 8),]
 #roost1 <- roost[which(roost$Month == 9),]

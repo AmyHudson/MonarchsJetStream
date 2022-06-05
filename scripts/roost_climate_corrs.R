@@ -16,7 +16,8 @@ library(RColorBrewer)
 library(ncdf4)
 
 monarch_ts <- read.csv("data/processed/MonarchTimeSeries.csv")
-monarch_ts1 <- monarch_ts[which(monarch_ts$Year>=2002 & monarch_ts$Year<=2019),]
+monarch_ts1 <- monarch_ts[which(monarch_ts$Year>=1994 & monarch_ts$Year<=2019),]
+#monarch_ts1 <- monarch_ts[which(monarch_ts$Year>=2002 & monarch_ts$Year<=2019),]
 #detrend each index
 monarch_ts_detrend <- data.frame(pracma::detrend(as.matrix(monarch_ts1)))
 
@@ -67,17 +68,26 @@ dim(Clim_var.nc)[3]
 longitude <- xdim[c(xs:(xs+119))]
 latitude <- ydim[c(ys:(ys+109))]
 
-Clim_var.nc<- Clim_var.nc[,,which(time[,1] >=2002 & time[,1] <=2019)]
-time <- time[which(time[,1] >=2002 & time[,1] <=2019),]
+Clim_var.nc<- Clim_var.nc[,,which(time[,1] >=1994 & time[,1] <=2019)]
+time <- time[which(time[,1] >=1994 & time[,1] <=2019),]
 
 #################################################################
 
-png("mex_corr_monthly_tmin.png",8,13,
+corcolglobal <- rev(c("#B2182B", 
+                      "#D6604D",
+                      "#F4A582",
+                      "#FFFFFF",
+                      "#FFFFFF",
+                      "#92C5DE",
+                      "#4393C3",
+                      "#2166AC"))
+
+global_alpha <- 0.1
+
+png("figures/mex_corr_monthly_tmin.png",8,13,
     units = "in",res = 600, pointsize=20, family= "helvetica")
 #par(mfrow=c(1,2), tcl=-0.5, family="serif", mai=c(0,0,0,0),mar = c(0, 0, 0, 0))
 par(mfrow=c(4,3))#,mar = c(0, 0, 0, 0))
-
-
 
 mon <- Clim_var.nc[,,time[,2]==1]
 mon1 <- aperm(mon,c(3,2,1)) #reorder with time variable in front, lat, lon
@@ -98,10 +108,13 @@ for (i in 1:length(mon1detrend)){
   pval[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$P[1,2]
 }
 
-global_alpha <- 0.1
+#create the global threshold based on the non-NA values
+pnona <- na.omit(pval) < 2*global_alpha*rank(na.omit(pval))/length(na.omit(pval))
+#but preserve the NA values for plotting
+d <- t(pval)
+d[!is.na(d)] <- t(pnona)[!is.na(t(pnona))]
+pvalglobal <- as.numeric(t(d))
 
-na.omit(pval)[which(na.omit(pval) < 2*global_alpha*rank(na.omit(pval))/length(na.omit(pval)))]
-pval 
 
 # add pixels for global significance threshold
 
@@ -109,7 +122,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){ # if (is.na(pval[i]) | pval[i] <0.1){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1detrend[,i] #climate time series of significant pixels
   }
@@ -128,19 +141,15 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
-
-map("worldHires", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F) 
+map("worldHires",c("Canada", "USA","Mexico"), xlim=c(-125,-65),ylim=c(15,55), fill=F,lwd = 1, add = F)  
 map.axes()
-#title("August") this is mid line
 
-#map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-#map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend = F)
-map("worldHires", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = T) 
+plot(rotate3, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend = F)
+map("worldHires", c("Canada", "USA","Mexico"), xlim=c(-125,-65),ylim=c(15,55), fill=F,lwd = 1, add = T) 
 #legend(-65,15, "JAN", bg = "white", adj = 0.2) #box.col = NA
 text(-65,15, "JAN",adj = c(1,0),cex = 1.5, bg = "white")
 
-plot(rotate3, legend.only = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend.width=1, legend.shrink=1,legend.args=list(text=c(expression(paste(rho,"\n, p<0.1"))),side=3, line=.25, cex=1), axis.args = list(cex.axis = 1),horiz=F)
+plot(rotate3, legend.only = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend.width=1, legend.shrink=1,legend.args=list(text=c(expression(paste(rho,"\n, p<0.1"))),side=3, line=.25, cex=1), axis.args = list(cex.axis = 1),horiz=F)
 
 
 
@@ -162,12 +171,18 @@ for (i in 1:length(mon1detrend)){
   rho[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$r[1,2]
   pval[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$P[1,2]
 }
+#create the global threshold based on the non-NA values
+pnona <- na.omit(pval) < 2*global_alpha*rank(na.omit(pval))/length(na.omit(pval))
+#but preserve the NA values for plotting
+d <- t(pval)
+d[!is.na(d)] <- t(pnona)[!is.na(t(pnona))]
+pvalglobal <- as.numeric(t(d))
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1detrend[,i] #climate time series of significant pixels
   }
@@ -187,12 +202,12 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "FEB",adj = c(1,0),cex = 1.5)
 
 
@@ -214,12 +229,18 @@ for (i in 1:length(mon1detrend)){
   rho[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$r[1,2]
   pval[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$P[1,2]
 }
+#create the global threshold based on the non-NA values
+pnona <- na.omit(pval) < 2*global_alpha*rank(na.omit(pval))/length(na.omit(pval))
+#but preserve the NA values for plotting
+d <- t(pval)
+d[!is.na(d)] <- t(pnona)[!is.na(t(pnona))]
+pvalglobal <- as.numeric(t(d))
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -239,13 +260,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "MAR",adj = c(1,0),cex = 1.5)
 
 
@@ -267,12 +288,18 @@ for (i in 1:length(mon1detrend)){
   rho[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$r[1,2]
   pval[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$P[1,2]
 }
+#create the global threshold based on the non-NA values
+pnona <- na.omit(pval) < 2*global_alpha*rank(na.omit(pval))/length(na.omit(pval))
+#but preserve the NA values for plotting
+d <- t(pval)
+d[!is.na(d)] <- t(pnona)[!is.na(t(pnona))]
+pvalglobal <- as.numeric(t(d))
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -292,13 +319,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "APR",adj = c(1,0),cex = 1.5)
 
 
@@ -320,12 +347,18 @@ for (i in 1:length(mon1df)){
   rho[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$r[1,2]
   pval[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$P[1,2]
 }
+#create the global threshold based on the non-NA values
+pnona <- na.omit(pval) < 2*global_alpha*rank(na.omit(pval))/length(na.omit(pval))
+#but preserve the NA values for plotting
+d <- t(pval)
+d[!is.na(d)] <- t(pnona)[!is.na(t(pnona))]
+pvalglobal <- as.numeric(t(d))
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -345,13 +378,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "MAY",adj = c(1,0),cex = 1.5)
 
 
@@ -373,12 +406,18 @@ for (i in 1:length(mon1df)){
   rho[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$r[1,2]
   pval[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$P[1,2]
 }
+#create the global threshold based on the non-NA values
+pnona <- na.omit(pval) < 2*global_alpha*rank(na.omit(pval))/length(na.omit(pval))
+#but preserve the NA values for plotting
+d <- t(pval)
+d[!is.na(d)] <- t(pnona)[!is.na(t(pnona))]
+pvalglobal <- as.numeric(t(d))
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -398,13 +437,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "JUN",adj = c(1,0),cex = 1.5)
 
 
@@ -426,12 +465,18 @@ for (i in 1:length(mon1df)){
   rho[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$r[1,2]
   pval[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$P[1,2]
 }
+#create the global threshold based on the non-NA values
+pnona <- na.omit(pval) < 2*global_alpha*rank(na.omit(pval))/length(na.omit(pval))
+#but preserve the NA values for plotting
+d <- t(pval)
+d[!is.na(d)] <- t(pnona)[!is.na(t(pnona))]
+pvalglobal <- as.numeric(t(d))
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -451,13 +496,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "JUL",adj = c(1,0),cex = 1.5)
 
 
@@ -479,12 +524,18 @@ for (i in 1:length(mon1df)){
   rho[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$r[1,2]
   pval[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$P[1,2]
 }
+#create the global threshold based on the non-NA values
+pnona <- na.omit(pval) < 2*global_alpha*rank(na.omit(pval))/length(na.omit(pval))
+#but preserve the NA values for plotting
+d <- t(pval)
+d[!is.na(d)] <- t(pnona)[!is.na(t(pnona))]
+pvalglobal <- as.numeric(t(d))
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -504,13 +555,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "AUG",adj = c(1,0),cex = 1.5)
 
 
@@ -533,12 +584,18 @@ for (i in 1:length(mon1df)){
   rho[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$r[1,2]
   pval[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$P[1,2]
 }
+#create the global threshold based on the non-NA values
+pnona <- na.omit(pval) < 2*global_alpha*rank(na.omit(pval))/length(na.omit(pval))
+#but preserve the NA values for plotting
+d <- t(pval)
+d[!is.na(d)] <- t(pnona)[!is.na(t(pnona))]
+pvalglobal <- as.numeric(t(d))
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -558,13 +615,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "SEP",adj = c(1,0),cex = 1.5)
 
 
@@ -587,11 +644,18 @@ for (i in 1:length(mon1df)){
   pval[i]<- rcorr(mon1detrend[,i],mexicoarea,type = c("spearman"))$P[1,2]
 }
 
+#create the global threshold based on the non-NA values
+pnona <- na.omit(pval) < 2*global_alpha*rank(na.omit(pval))/length(na.omit(pval))
+#but preserve the NA values for plotting
+d <- t(pval)
+d[!is.na(d)] <- t(pnona)[!is.na(t(pnona))]
+pvalglobal <- as.numeric(t(d))
+
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -611,18 +675,20 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "OCT",adj = c(1,0),cex = 1.5)
 
 
 dev.off()
 
+#################################################################
+##diddnt finish global pval ing
 #################################################################
 
 png("fig_roost8_corr_monthlytemp_tmin.png",8,13,
@@ -650,12 +716,18 @@ for (i in 1:length(mon1detrend)){
   rho[i]<- rcorr(mon1detrend[,i],JN_ROOST_8,type = c("spearman"))$r[1,2]
   pval[i]<- rcorr(mon1detrend[,i],JN_ROOST_8,type = c("spearman"))$P[1,2]
 }
+#create the global threshold based on the non-NA values
+pnona <- na.omit(pval) < 2*global_alpha*rank(na.omit(pval))/length(na.omit(pval))
+#but preserve the NA values for plotting
+d <- t(pval)
+d[!is.na(d)] <- t(pnona)[!is.na(t(pnona))]
+pvalglobal <- as.numeric(t(d))
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1detrend[,i] #climate time series of significant pixels
   }
@@ -675,16 +747,16 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend = F)
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend = F)
 text(-65,15, "JAN",adj = c(1,0),cex = 1.5)
 
-plot(rotate3, legend.only = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend.width=1, legend.shrink=1,legend.args=list(text=c(expression(paste(rho,"\n, p<0.1"))),side=3, line=.25, cex=1), axis.args = list(cex.axis = 1),horiz=F)
+plot(rotate3, legend.only = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend.width=1, legend.shrink=1,legend.args=list(text=c(expression(paste(rho,"\n, p<0.1"))),side=3, line=.25, cex=1), axis.args = list(cex.axis = 1),horiz=F)
 
 
 
@@ -706,12 +778,18 @@ for (i in 1:length(mon1detrend)){
   rho[i]<- rcorr(mon1detrend[,i],JN_ROOST_8,type = c("spearman"))$r[1,2]
   pval[i]<- rcorr(mon1detrend[,i],JN_ROOST_8,type = c("spearman"))$P[1,2]
 }
+#create the global threshold based on the non-NA values
+pnona <- na.omit(pval) < 2*global_alpha*rank(na.omit(pval))/length(na.omit(pval))
+#but preserve the NA values for plotting
+d <- t(pval)
+d[!is.na(d)] <- t(pnona)[!is.na(t(pnona))]
+pvalglobal <- as.numeric(t(d))
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1detrend[,i] #climate time series of significant pixels
   }
@@ -731,12 +809,12 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "FEB",adj = c(1,0),cex = 1.5)
 
 
@@ -758,12 +836,18 @@ for (i in 1:length(mon1detrend)){
   rho[i]<- rcorr(mon1detrend[,i],JN_ROOST_8,type = c("spearman"))$r[1,2]
   pval[i]<- rcorr(mon1detrend[,i],JN_ROOST_8,type = c("spearman"))$P[1,2]
 }
+#create the global threshold based on the non-NA values
+pnona <- na.omit(pval) < 2*global_alpha*rank(na.omit(pval))/length(na.omit(pval))
+#but preserve the NA values for plotting
+d <- t(pval)
+d[!is.na(d)] <- t(pnona)[!is.na(t(pnona))]
+pvalglobal <- as.numeric(t(d))
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -783,13 +867,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "MAR",adj = c(1,0),cex = 1.5)
 
 
@@ -811,12 +895,18 @@ for (i in 1:length(mon1detrend)){
   rho[i]<- rcorr(mon1detrend[,i],JN_ROOST_8,type = c("spearman"))$r[1,2]
   pval[i]<- rcorr(mon1detrend[,i],JN_ROOST_8,type = c("spearman"))$P[1,2]
 }
+#create the global threshold based on the non-NA values
+pnona <- na.omit(pval) < 2*global_alpha*rank(na.omit(pval))/length(na.omit(pval))
+#but preserve the NA values for plotting
+d <- t(pval)
+d[!is.na(d)] <- t(pnona)[!is.na(t(pnona))]
+pvalglobal <- as.numeric(t(d))
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -836,13 +926,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "APR",adj = c(1,0),cex = 1.5)
 
 
@@ -864,12 +954,18 @@ for (i in 1:length(mon1df)){
   rho[i]<- rcorr(mon1detrend[,i],JN_ROOST_8,type = c("spearman"))$r[1,2]
   pval[i]<- rcorr(mon1detrend[,i],JN_ROOST_8,type = c("spearman"))$P[1,2]
 }
+#create the global threshold based on the non-NA values
+pnona <- na.omit(pval) < 2*global_alpha*rank(na.omit(pval))/length(na.omit(pval))
+#but preserve the NA values for plotting
+d <- t(pval)
+d[!is.na(d)] <- t(pnona)[!is.na(t(pnona))]
+pvalglobal <- as.numeric(t(d))
 
 rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -889,13 +985,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "MAY",adj = c(1,0),cex = 1.5)
 
 
@@ -922,7 +1018,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -942,13 +1038,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "JUN",adj = c(1,0),cex = 1.5)
 
 
@@ -975,7 +1071,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -995,13 +1091,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "JUL",adj = c(1,0),cex = 1.5)
 
 
@@ -1028,7 +1124,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -1048,13 +1144,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "AUG",adj = c(1,0),cex = 1.5)
 
 
@@ -1082,7 +1178,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -1102,13 +1198,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "SEP",adj = c(1,0),cex = 1.5)
 
 
@@ -1135,7 +1231,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -1155,13 +1251,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "OCT",adj = c(1,0),cex = 1.5)
 
 
@@ -1200,7 +1296,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1detrend[,i] #climate time series of significant pixels
   }
@@ -1220,16 +1316,16 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend = F)
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend = F)
 text(-65,15, "JAN",adj = c(1,0),cex = 1.5)
 
-plot(rotate3, legend.only = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend.width=1, legend.shrink=1,legend.args=list(text=c(expression(paste(rho,"\n, p<0.1"))),side=3, line=.25, cex=1), axis.args = list(cex.axis = 1),horiz=F)
+plot(rotate3, legend.only = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend.width=1, legend.shrink=1,legend.args=list(text=c(expression(paste(rho,"\n, p<0.1"))),side=3, line=.25, cex=1), axis.args = list(cex.axis = 1),horiz=F)
 
 
 
@@ -1256,7 +1352,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1detrend[,i] #climate time series of significant pixels
   }
@@ -1276,12 +1372,12 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "FEB",adj = c(1,0),cex = 1.5)
 
 
@@ -1308,7 +1404,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -1328,13 +1424,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "MAR",adj = c(1,0),cex = 1.5)
 
 
@@ -1361,7 +1457,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -1381,13 +1477,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "APR",adj = c(1,0),cex = 1.5)
 
 
@@ -1414,7 +1510,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -1434,13 +1530,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "MAY",adj = c(1,0),cex = 1.5)
 
 
@@ -1467,7 +1563,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -1487,13 +1583,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "JUN",adj = c(1,0),cex = 1.5)
 
 
@@ -1520,7 +1616,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -1540,13 +1636,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "JUL",adj = c(1,0),cex = 1.5)
 
 
@@ -1573,7 +1669,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -1593,13 +1689,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "AUG",adj = c(1,0),cex = 1.5)
 
 
@@ -1627,7 +1723,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -1647,13 +1743,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "SEP",adj = c(1,0),cex = 1.5)
 
 dev.off()
@@ -1689,7 +1785,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1detrend[,i] #climate time series of significant pixels
   }
@@ -1709,16 +1805,16 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend = F)
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend = F)
 text(-65,15, "JAN",adj = c(1,0),cex = 1.5)
 
-plot(rotate3, legend.only = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend.width=1, legend.shrink=1,legend.args=list(text=c(expression(paste(rho,"\n, p<0.1"))),side=3, line=.25, cex=1), axis.args = list(cex.axis = 1),horiz=F)
+plot(rotate3, legend.only = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend.width=1, legend.shrink=1,legend.args=list(text=c(expression(paste(rho,"\n, p<0.1"))),side=3, line=.25, cex=1), axis.args = list(cex.axis = 1),horiz=F)
 
 
 
@@ -1745,7 +1841,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1detrend[,i] #climate time series of significant pixels
   }
@@ -1765,12 +1861,12 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "FEB",adj = c(1,0),cex = 1.5)
 
 
@@ -1797,7 +1893,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -1817,13 +1913,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "MAR",adj = c(1,0),cex = 1.5)
 
 
@@ -1850,7 +1946,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -1870,13 +1966,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "APR",adj = c(1,0),cex = 1.5)
 
 
@@ -1903,7 +1999,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -1923,13 +2019,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "MAY",adj = c(1,0),cex = 1.5)
 
 
@@ -1956,7 +2052,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -1976,13 +2072,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "JUN",adj = c(1,0),cex = 1.5)
 
 
@@ -2009,7 +2105,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -2029,13 +2125,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "JUL",adj = c(1,0),cex = 1.5)
 
 
@@ -2062,7 +2158,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -2082,13 +2178,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "AUG",adj = c(1,0),cex = 1.5)
 
 
@@ -2116,7 +2212,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -2136,13 +2232,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "SEP",adj = c(1,0),cex = 1.5)
 
 
@@ -2169,7 +2265,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -2189,13 +2285,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "OCT",adj = c(1,0),cex = 1.5)
 
 
@@ -2278,7 +2374,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1detrend[,i] #climate time series of significant pixels
   }
@@ -2298,16 +2394,16 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend = F)
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend = F)
 text(-65,15, "JAN",adj = c(1,0),cex = 1.5)
 
-plot(rotate3, legend.only = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend.width=1, legend.shrink=1,legend.args=list(text=c(expression(paste(rho,"\n, p<0.1"))),side=3, line=.25, cex=1), axis.args = list(cex.axis = 1),horiz=F)
+plot(rotate3, legend.only = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend.width=1, legend.shrink=1,legend.args=list(text=c(expression(paste(rho,"\n, p<0.1"))),side=3, line=.25, cex=1), axis.args = list(cex.axis = 1),horiz=F)
 
 
 
@@ -2334,7 +2430,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1detrend[,i] #climate time series of significant pixels
   }
@@ -2354,12 +2450,12 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "FEB",adj = c(1,0),cex = 1.5)
 
 
@@ -2386,7 +2482,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -2406,13 +2502,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "MAR",adj = c(1,0),cex = 1.5)
 
 
@@ -2439,7 +2535,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -2459,13 +2555,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "APR",adj = c(1,0),cex = 1.5)
 
 
@@ -2492,7 +2588,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -2512,13 +2608,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "MAY",adj = c(1,0),cex = 1.5)
 
 
@@ -2545,7 +2641,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -2565,13 +2661,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "JUN",adj = c(1,0),cex = 1.5)
 
 
@@ -2598,7 +2694,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -2618,13 +2714,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "JUL",adj = c(1,0),cex = 1.5)
 
 
@@ -2651,7 +2747,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -2671,13 +2767,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "AUG",adj = c(1,0),cex = 1.5)
 
 
@@ -2705,7 +2801,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -2725,13 +2821,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "SEP",adj = c(1,0),cex = 1.5)
 
 
@@ -2758,7 +2854,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -2778,13 +2874,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "OCT",adj = c(1,0),cex = 1.5)
 
 
@@ -2822,7 +2918,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1detrend[,i] #climate time series of significant pixels
   }
@@ -2842,16 +2938,16 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend = F)
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend = F)
 text(-65,15, "JAN",adj = c(1,0),cex = 1.5)
 
-plot(rotate3, legend.only = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend.width=1, legend.shrink=1,legend.args=list(text=c(expression(paste(rho,"\n, p<0.1"))),side=3, line=.25, cex=1), axis.args = list(cex.axis = 1),horiz=F)
+plot(rotate3, legend.only = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend.width=1, legend.shrink=1,legend.args=list(text=c(expression(paste(rho,"\n, p<0.1"))),side=3, line=.25, cex=1), axis.args = list(cex.axis = 1),horiz=F)
 
 
 
@@ -2878,7 +2974,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1detrend[,i] #climate time series of significant pixels
   }
@@ -2898,12 +2994,12 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "FEB",adj = c(1,0),cex = 1.5)
 
 
@@ -2930,7 +3026,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -2950,13 +3046,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "MAR",adj = c(1,0),cex = 1.5)
 
 
@@ -2983,7 +3079,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -3003,13 +3099,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "APR",adj = c(1,0),cex = 1.5)
 
 
@@ -3036,7 +3132,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -3056,13 +3152,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "MAY",adj = c(1,0),cex = 1.5)
 
 
@@ -3089,7 +3185,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -3109,13 +3205,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "JUN",adj = c(1,0),cex = 1.5)
 
 
@@ -3142,7 +3238,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -3162,13 +3258,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "JUL",adj = c(1,0),cex = 1.5)
 
 
@@ -3195,7 +3291,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -3215,13 +3311,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "AUG",adj = c(1,0),cex = 1.5)
 
 
@@ -3249,7 +3345,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -3269,13 +3365,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "SEP",adj = c(1,0),cex = 1.5)
 
 
@@ -3302,7 +3398,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -3322,13 +3418,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "OCT",adj = c(1,0),cex = 1.5)
 
 
@@ -3367,7 +3463,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1detrend[,i] #climate time series of significant pixels
   }
@@ -3387,16 +3483,16 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend = F)
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend = F)
 text(-65,15, "JAN",adj = c(1,0),cex = 1.5)
 
-plot(rotate3, legend.only = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend.width=1, legend.shrink=1,legend.args=list(text=c(expression(paste(rho,"\n, p<0.1"))),side=3, line=.25, cex=1), axis.args = list(cex.axis = 1),horiz=F)
+plot(rotate3, legend.only = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend.width=1, legend.shrink=1,legend.args=list(text=c(expression(paste(rho,"\n, p<0.1"))),side=3, line=.25, cex=1), axis.args = list(cex.axis = 1),horiz=F)
 
 
 
@@ -3423,7 +3519,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1detrend[,i] #climate time series of significant pixels
   }
@@ -3443,12 +3539,12 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "FEB",adj = c(1,0),cex = 1.5)
 
 
@@ -3475,7 +3571,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -3495,13 +3591,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "MAR",adj = c(1,0),cex = 1.5)
 
 
@@ -3528,7 +3624,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -3548,13 +3644,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "APR",adj = c(1,0),cex = 1.5)
 
 
@@ -3581,7 +3677,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -3601,13 +3697,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "MAY",adj = c(1,0),cex = 1.5)
 
 
@@ -3634,7 +3730,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -3654,13 +3750,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "JUN",adj = c(1,0),cex = 1.5)
 
 
@@ -3687,7 +3783,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -3707,13 +3803,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "JUL",adj = c(1,0),cex = 1.5)
 
 
@@ -3740,7 +3836,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -3760,13 +3856,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "AUG",adj = c(1,0),cex = 1.5)
 
 
@@ -3794,7 +3890,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -3814,13 +3910,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "SEP",adj = c(1,0),cex = 1.5)
 
 
@@ -3847,7 +3943,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -3867,13 +3963,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "OCT",adj = c(1,0),cex = 1.5)
 
 
@@ -3910,7 +4006,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1detrend[,i] #climate time series of significant pixels
   }
@@ -3930,16 +4026,16 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend = F)
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend = F)
 text(-65,15, "JAN",adj = c(1,0),cex = 1.5)
 
-plot(rotate3, legend.only = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend.width=1, legend.shrink=1,legend.args=list(text=c(expression(paste(rho,"\n, p<0.1"))),side=3, line=.25, cex=1), axis.args = list(cex.axis = 1),horiz=F)
+plot(rotate3, legend.only = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend.width=1, legend.shrink=1,legend.args=list(text=c(expression(paste(rho,"\n, p<0.1"))),side=3, line=.25, cex=1), axis.args = list(cex.axis = 1),horiz=F)
 
 
 
@@ -3966,7 +4062,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1detrend[,i] #climate time series of significant pixels
   }
@@ -3986,12 +4082,12 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "FEB",adj = c(1,0),cex = 1.5)
 
 
@@ -4018,7 +4114,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -4038,13 +4134,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "MAR",adj = c(1,0),cex = 1.5)
 
 
@@ -4071,7 +4167,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -4091,13 +4187,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "APR",adj = c(1,0),cex = 1.5)
 
 
@@ -4124,7 +4220,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -4144,13 +4240,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "MAY",adj = c(1,0),cex = 1.5)
 
 
@@ -4177,7 +4273,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -4197,13 +4293,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "JUN",adj = c(1,0),cex = 1.5)
 
 
@@ -4230,7 +4326,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -4250,13 +4346,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "JUL",adj = c(1,0),cex = 1.5)
 
 
@@ -4283,7 +4379,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -4303,13 +4399,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "AUG",adj = c(1,0),cex = 1.5)
 
 
@@ -4337,7 +4433,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -4357,13 +4453,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "SEP",adj = c(1,0),cex = 1.5)
 
 
@@ -4390,7 +4486,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -4410,13 +4506,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "OCT",adj = c(1,0),cex = 1.5)
 
 
@@ -4499,7 +4595,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1detrend[,i] #climate time series of significant pixels
   }
@@ -4519,16 +4615,16 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend = F)
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend = F)
 text(-65,15, "JAN",adj = c(1,0),cex = 1.5)
 
-plot(rotate3, legend.only = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend.width=1, legend.shrink=1,legend.args=list(text=c(expression(paste(rho,"\n, p<0.1"))),side=3, line=.25, cex=1), axis.args = list(cex.axis = 1),horiz=F)
+plot(rotate3, legend.only = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend.width=1, legend.shrink=1,legend.args=list(text=c(expression(paste(rho,"\n, p<0.1"))),side=3, line=.25, cex=1), axis.args = list(cex.axis = 1),horiz=F)
 
 
 
@@ -4555,7 +4651,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1detrend[,i] #climate time series of significant pixels
   }
@@ -4575,12 +4671,12 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "FEB",adj = c(1,0),cex = 1.5)
 
 
@@ -4607,7 +4703,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -4627,13 +4723,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "MAR",adj = c(1,0),cex = 1.5)
 
 
@@ -4660,7 +4756,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -4680,13 +4776,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "APR",adj = c(1,0),cex = 1.5)
 
 
@@ -4713,7 +4809,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -4733,13 +4829,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "MAY",adj = c(1,0),cex = 1.5)
 
 
@@ -4766,7 +4862,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -4786,13 +4882,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "JUN",adj = c(1,0),cex = 1.5)
 
 
@@ -4819,7 +4915,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -4839,13 +4935,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "JUL",adj = c(1,0),cex = 1.5)
 
 
@@ -4872,7 +4968,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -4892,13 +4988,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "AUG",adj = c(1,0),cex = 1.5)
 
 
@@ -4926,7 +5022,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -4946,13 +5042,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "SEP",adj = c(1,0),cex = 1.5)
 
 
@@ -4979,7 +5075,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -4999,13 +5095,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "OCT",adj = c(1,0),cex = 1.5)
 
 
@@ -5043,7 +5139,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1detrend[,i] #climate time series of significant pixels
   }
@@ -5063,16 +5159,16 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend = F)
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend = F)
 text(-65,15, "JAN",adj = c(1,0),cex = 1.5)
 
-plot(rotate3, legend.only = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend.width=1, legend.shrink=1,legend.args=list(text=c(expression(paste(rho,"\n, p<0.1"))),side=3, line=.25, cex=1), axis.args = list(cex.axis = 1),horiz=F)
+plot(rotate3, legend.only = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend.width=1, legend.shrink=1,legend.args=list(text=c(expression(paste(rho,"\n, p<0.1"))),side=3, line=.25, cex=1), axis.args = list(cex.axis = 1),horiz=F)
 
 
 
@@ -5099,7 +5195,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1detrend[,i] #climate time series of significant pixels
   }
@@ -5119,12 +5215,12 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "FEB",adj = c(1,0),cex = 1.5)
 
 
@@ -5151,7 +5247,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -5171,13 +5267,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "MAR",adj = c(1,0),cex = 1.5)
 
 
@@ -5204,7 +5300,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -5224,13 +5320,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "APR",adj = c(1,0),cex = 1.5)
 
 
@@ -5257,7 +5353,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -5277,13 +5373,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "MAY",adj = c(1,0),cex = 1.5)
 
 
@@ -5310,7 +5406,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -5330,13 +5426,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "JUN",adj = c(1,0),cex = 1.5)
 
 
@@ -5363,7 +5459,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -5383,13 +5479,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "JUL",adj = c(1,0),cex = 1.5)
 
 
@@ -5416,7 +5512,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -5436,13 +5532,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "AUG",adj = c(1,0),cex = 1.5)
 
 
@@ -5470,7 +5566,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -5490,13 +5586,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "SEP",adj = c(1,0),cex = 1.5)
 
 
@@ -5523,7 +5619,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -5543,13 +5639,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "OCT",adj = c(1,0),cex = 1.5)
 
 
@@ -5588,7 +5684,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1detrend[,i] #climate time series of significant pixels
   }
@@ -5608,16 +5704,16 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend = F)
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend = F)
 text(-65,15, "JAN",adj = c(1,0),cex = 1.5)
 
-plot(rotate3, legend.only = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend.width=1, legend.shrink=1,legend.args=list(text=c(expression(paste(rho,"\n, p<0.1"))),side=3, line=.25, cex=1), axis.args = list(cex.axis = 1),horiz=F)
+plot(rotate3, legend.only = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend.width=1, legend.shrink=1,legend.args=list(text=c(expression(paste(rho,"\n, p<0.1"))),side=3, line=.25, cex=1), axis.args = list(cex.axis = 1),horiz=F)
 
 
 
@@ -5644,7 +5740,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1detrend[,i] #climate time series of significant pixels
   }
@@ -5664,12 +5760,12 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "FEB",adj = c(1,0),cex = 1.5)
 
 
@@ -5696,7 +5792,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -5716,13 +5812,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "MAR",adj = c(1,0),cex = 1.5)
 
 
@@ -5749,7 +5845,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -5769,13 +5865,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "APR",adj = c(1,0),cex = 1.5)
 
 
@@ -5802,7 +5898,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -5822,13 +5918,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "MAY",adj = c(1,0),cex = 1.5)
 
 
@@ -5855,7 +5951,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -5875,13 +5971,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "JUN",adj = c(1,0),cex = 1.5)
 
 
@@ -5908,7 +6004,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -5928,13 +6024,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "JUL",adj = c(1,0),cex = 1.5)
 
 
@@ -5961,7 +6057,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -5981,13 +6077,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "AUG",adj = c(1,0),cex = 1.5)
 
 
@@ -6015,7 +6111,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -6035,13 +6131,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "SEP",adj = c(1,0),cex = 1.5)
 
 
@@ -6068,7 +6164,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -6088,13 +6184,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "OCT",adj = c(1,0),cex = 1.5)
 
 
@@ -6131,7 +6227,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1detrend[,i] #climate time series of significant pixels
   }
@@ -6151,16 +6247,16 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend = F)
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend = F)
 text(-65,15, "JAN",adj = c(1,0),cex = 1.5)
 
-plot(rotate3, legend.only = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend.width=1, legend.shrink=1,legend.args=list(text=c(expression(paste(rho,"\n, p<0.1"))),side=3, line=.25, cex=1), axis.args = list(cex.axis = 1),horiz=F)
+plot(rotate3, legend.only = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8),legend.width=1, legend.shrink=1,legend.args=list(text=c(expression(paste(rho,"\n, p<0.1"))),side=3, line=.25, cex=1), axis.args = list(cex.axis = 1),horiz=F)
 
 
 
@@ -6187,7 +6283,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1detrend[,i] #climate time series of significant pixels
   }
@@ -6207,12 +6303,12 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "FEB",adj = c(1,0),cex = 1.5)
 
 
@@ -6239,7 +6335,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -6259,13 +6355,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "MAR",adj = c(1,0),cex = 1.5)
 
 
@@ -6292,7 +6388,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -6312,13 +6408,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "APR",adj = c(1,0),cex = 1.5)
 
 
@@ -6345,7 +6441,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -6365,13 +6461,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "MAY",adj = c(1,0),cex = 1.5)
 
 
@@ -6398,7 +6494,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -6418,13 +6514,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "JUN",adj = c(1,0),cex = 1.5)
 
 
@@ -6451,7 +6547,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -6471,13 +6567,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "JUL",adj = c(1,0),cex = 1.5)
 
 
@@ -6504,7 +6600,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -6524,13 +6620,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "AUG",adj = c(1,0),cex = 1.5)
 
 
@@ -6558,7 +6654,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -6578,13 +6674,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "SEP",adj = c(1,0),cex = 1.5)
 
 
@@ -6611,7 +6707,7 @@ rho1 <- as.data.frame(matrix(NA,nrow = 1,ncol = length(rho)))#NA[length(mon1)]
 #mon1df1 <- as.data.frame(matrix(NA,nrow = 25,ncol = length(rho)))
 
 for (i in 1:length(mon1df)){
-  if (is.na(pval[i]) | pval[i] <0.1){
+  if (is.na(pval[i]) | pvalglobal[i] > 0){
     rho1[i] <- rho[i] # significant correlation values
     #mon1df1[,i] <- mon1df[,i] #climate time series of significant pixels
   }
@@ -6631,13 +6727,13 @@ rotate3 <- raster(rho2[nrow(rho2):1,])
 extent(rotate3) <- extent(c(min(longitude),max(longitude),min(latitude),max(latitude)))
 
 
-map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,70), fill=F,lwd = 1, add = F)  #plot the region of Canada
+map("worldHires","Canada", xlim=c(-125,-65),ylim=c(15,60), fill=F,lwd = 1, add = F)  #plot the region of Canada
 map.axes()
 #title("August") this is mid line
 
-map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)  #plot the region of US
-map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,70), fill=F, add = T,lwd = 1)#plot the region of Mexico
-plot(rotate3, legend = F, add = T, col = rev(brewer.pal(8,"RdBu")), breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
+map("worldHires","USA", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)  #plot the region of US
+map("worldHires","Mexico", xlim=c(-125,-65),ylim=c(15,60), fill=F, add = T,lwd = 1)#plot the region of Mexico
+plot(rotate3, legend = F, add = T, col = corcolglobal, breaks = c(-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8))
 text(-65,15, "OCT",adj = c(1,0),cex = 1.5)
 
 

@@ -1,5 +1,5 @@
 # MonarchsJetStream
-This repository is for identifying when monarch migration is influenced by the jet stream and mechanisms for that influence. 
+Here we identify when monarch migration is influenced by the jet stream and potential mechanisms for that influence. 
 
 ## Data, sources and citations:
 
