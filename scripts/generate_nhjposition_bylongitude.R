@@ -22,7 +22,11 @@ for(x in 1:dim(maxpos.ncep)[1]){for(y in 1:dim(maxpos.ncep)[2]){maxlocation.ncep
 
 #maxspeed.ncep.ts <- ts(t(maxspeed.ncep), start = 1948, frequency = 12)
 maxlocation.ncep.ts <- ts(t(maxlocation.ncep), start = 1948, frequency = 12)
-maxlocation.ncep.ts <- maxlocation.ncep.ts[1:880,]
+maxlocation.ncep.ts <- maxlocation.ncep.ts[1:888,]
 
-write.table(maxlocation.ncep.ts, file = "data/processed/NHJ_position_global_1948jan-2021apr_ncepncar.txt", sep = "\t", col.names = paste(as.character(lon.ncep),"_degE",sep=""), row.names = F, quote = F)
+write.table(maxlocation.ncep.ts, file = "data/processed/NHJ_position_global_1948-2021_ncepncar.txt", sep = "\t", col.names = paste(as.character(lon.ncep),"_degE",sep=""), row.names = F, quote = F)
+
+maxlocation.ncep.ts <- maxlocation.ncep.ts[1:876,]
+
+write.table(maxlocation.ncep.ts, file = "data/processed/NHJ_position_global_1948-2020_ncepncar.txt", sep = "\t", col.names = paste(as.character(lon.ncep),"_degE",sep=""), row.names = F, quote = F)
 
