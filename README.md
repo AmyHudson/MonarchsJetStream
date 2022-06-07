@@ -1,8 +1,8 @@
 # MonarchsJetStream
 Here we identify when monarch migration is influenced by the jet stream and potential mechanisms for that influence. 
 
-![Adult monarch observations from GBIF.com show the monthly movement of the eastern migration- matching the mean position of the monthly jet stream](/figures/allmonths_gbifcentroid_jetpos.png)
-
+![Monthly monarch and jet stream movement](/figures/allmonths_gbifcentroid_jetpos.png)
+Adult monarch observations from GBIF.com (orange points) show the monthly movement of the eastern migration- overlapping with the position of the monthly jet stream.
 
 ## Data, sources and citations:
 
