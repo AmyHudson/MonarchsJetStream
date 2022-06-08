@@ -1,6 +1,6 @@
 # generate table correlating monarch roosting time series with jet stream position by longitude
 
-yrmin <- 2004
+yrmin <- 1993
 yrmax <- 2018
 alpha <- 0.1
 

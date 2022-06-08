@@ -17,7 +17,7 @@ library(matrixStats)
 ##############
 
 monarch_ts <- read.csv("data/processed/MonarchTimeSeries.csv")
-monarch_ts <- monarch_ts[2:30,]
+monarch_ts <- monarch_ts[2:29,]
 
 png("figures/timeseriesplots.png",3,5,
     units = "in",res = 600, pointsize=12, family= "helvetica")
@@ -36,10 +36,11 @@ abline(lm(monarch_ts$Mexico~monarch_ts$Year))
 legend("top", legend = c("Total area occupied at overwintering sites in Mexico (ha)"), col = c("black"), lty = c(1), lwd = c(1),bg = "white",cex = 0.70, bty = "n")
 
 #truncate to 2002-2020 
-monarch_ts1 <- monarch_ts[which(monarch_ts$Year>=2004 & monarch_ts$Year<=2021),]
+monarch_ts1 <- monarch_ts[which(monarch_ts$Year>=2002 & monarch_ts$Year<=2021),]
 #detrend each index
 
 library(dplR)
+library(Hmisc)
 rcorr(as.numeric(detrend.series(monarch_ts1$Mexico, method = "Spline",make.plot = F)),
       as.numeric(detrend.series(monarch_ts1$JN_ROOST_8, method = "Spline",make.plot = F)),
       type = "spearman")
@@ -61,9 +62,9 @@ rcorr(as.numeric(detrend.series(monarch_ts1$JN_ROOST_8, method = "Friedman",make
 monarch_ts_detrend <- data.frame(pracma::detrend(as.matrix(monarch_ts1)))
      
 library(Hmisc)
-rcorr(monarch_ts_detrend$Mexico,monarch_ts_detrend$JN_ROOST_8, type = "spearman")
-rcorr(monarch_ts_detrend$Mexico,monarch_ts_detrend$JN_ROOST_9, type = "spearman")
-rcorr(monarch_ts_detrend$JN_ROOST_8,monarch_ts_detrend$JN_ROOST_9, type = "spearman")
+rcorr(monarch_ts_detrend$Mexico,monarch_ts_detrend$JN_ROOST_8)#, type = "spearman")
+rcorr(monarch_ts_detrend$Mexico,monarch_ts_detrend$JN_ROOST_9)#, type = "spearman")
+rcorr(monarch_ts_detrend$JN_ROOST_8,monarch_ts_detrend$JN_ROOST_9)#, type = "spearman")
 
 
 
@@ -72,7 +73,7 @@ plot(2002:2021, scale(monarch_ts_detrend$JN_ROOST_8), lty = 2, lwd = 1, col = "b
 lines(2002:2021, scale(monarch_ts_detrend$JN_ROOST_9), lty = 3,lwd = 1, col = "black")
 lines(2002:2021, scale(monarch_ts_detrend$Mexico), lwd = 1, col = "black")
 abline(h = 0)
-legend("top", legend = c("August Roost Index, r=0.49","September Roost Index, r=0.54","Winter Area Index"), col = c("black","black","black"), lty = c(2,3,1), lwd = c(1,1,1),bg = "white",cex = 0.70, bty = "n")
+legend("top", legend = c("August Roost Index, r=0.44","September Roost Index, r=0.53","Winter Area Index"), col = c("black","black","black"), lty = c(2,3,1), lwd = c(1,1,1),bg = "white",cex = 0.70, bty = "n")
 
 
 
