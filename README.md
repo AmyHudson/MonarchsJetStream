@@ -7,7 +7,7 @@ Adult monarch observations from GBIF.com (orange points) show the monthly moveme
 ## Data, sources and citations:
 
 ### Monarch Data
-We create 3 indices of monarch population at multiple points along the migration path: roosting indices in August and September were developed from Journey North database of citizen scientist observations; these roosting indices supplement the winter mexico area index, a population estimate conducted by WWF every winter (usually December) by measuring the amount of forest area the roosts are present at.
+We create 3 indices of monarch population at multiple points along the migration path: raw values to create roosting indices in August (A) and September (B) were obtained from Journey North database of citizen scientist observations; these roosting observations supplement the winter mexico area (C), a population estimate conducted by WWF every winter (usually December) by measuring the amount of forest area the roosts are present at.
 
 ![3 monarch roosting time series](/figures/jnroost89_mx_mapsanddetrendedtimeseries2.png)
 
