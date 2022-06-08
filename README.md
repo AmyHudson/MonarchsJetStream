@@ -9,11 +9,9 @@ Adult monarch observations from GBIF.com (orange points) show the monthly moveme
 ### Monarch Data
 We create 3 indices of monarch population at multiple points along the migration path: roosting indices in August and September were developed from Journey North database of citizen scientist observations; these roosting indices supplement the winter mexico area index, a population estimate conducted by WWF every winter (usually December) by measuring the amount of forest area the roosts are present at.
 
-MonarchTimeSeries.csv summarizes all of the monarch time series in one file.
+![3 monarch roosting time series](/figures/jnroost89_mx_mapsanddetrendedtimeseries2.png)
 
-Mexico acreage in MonarchTimeSeries.csv and Butterflies1994-2020.txt and 2021 from recent [world wildlife fund- mexico annual report](https://files.worldwildlife.org/wwfcmsprod/files/Publication/file/7907txsoa8_Monarch_Butterfly_Survey_2021_2022_May24_2022_.pdf) 
-
-monarch_journeynorth_Fall_Roost.csv shows Month,Day,Year,Latitude,Longitude,Number for roosting events observed by citizen scientists from 2002 to 2020. Number is not always recorded. This was manually downloaded for each year and month from the [Journey North map interface](https://maps.journeynorth.org/map/?map=monarch-roost-fall&year=2021) by clicking on the View Data tab. journeynorth.R creates figures to visualize where and the interannual occurrence of roosting events.
+MonarchTimeSeries.csv summarizes all of the monarch time series in one file. Mexico acreage are from the most recent [world wildlife fund- mexico annual report](https://files.worldwildlife.org/wwfcmsprod/files/Publication/file/7907txsoa8_Monarch_Butterfly_Survey_2021_2022_May24_2022_.pdf). August and September Roost indices were created by summing the number of roosting observations by month for each year. monarch_journeynorth_Fall_Roost.csv shows Month,Day,Year,Latitude,Longitude,Number for roosting events observed by citizen scientists from 2002 to 2020. Number is not always recorded. This was manually downloaded for each year and month from the [Journey North map interface](https://maps.journeynorth.org/map/?map=monarch-roost-fall&year=2021) by clicking on the View Data tab. journeynorth.R creates figures to visualize where and the interannual occurrence of roosting events.
 
 
 ### Climate Data <!-- <h1 align="center">Climate Data</h1>  -->
