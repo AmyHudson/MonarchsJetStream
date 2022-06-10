@@ -1,8 +1,9 @@
 # generate table correlating monarch roosting time series with jet stream position by longitude
 
-yrmin <- 1993
-yrmax <- 2018
-alpha <- 0.1
+
+yrmin <- 2002
+yrmax <- 2021
+alpha <- 0.05
 
 # read in monarch roosts
 monarch_ts <- read.csv("data/processed/MonarchTimeSeries.csv")
@@ -40,9 +41,12 @@ for(j in 1:11){
   #jet <- as.data.frame(pracma::detrend(as.matrix(jet), tt = 'linear'))
   jetdetrend <- pracma::detrend(as.matrix(jet))
   
+  #jetdetrend <- as.data.frame(jetdetrend)[c(1,2,3,4,8,9,12,14,15,16,17,19),]
+  #mexicoarea <- mexicoarea[c(1,2,3,4,8,9,12,14,15,16,17,19)]
+  
   for(i in 1:length(jet)){
-    if (rcorr(mexicoarea,jetdetrend[,i], type = "spearman")$P[1,2]<alpha){
-      cor_table[j,i] <- rcorr(mexicoarea,jetdetrend[,i], type = "spearman")[[1]][1,2]
+    if (rcorr(mexicoarea,jetdetrend[,i])$P[1,2]<alpha){
+      cor_table[j,i] <- rcorr(mexicoarea,jetdetrend[,i])[[1]][1,2]
     }
   }
   
