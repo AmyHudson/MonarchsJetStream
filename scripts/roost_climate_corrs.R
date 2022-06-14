@@ -1,3 +1,8 @@
+# generate long table correlating monarch roosting time series with jet stream position by longitude
+# columns: period; latitude; longitude; index(August; September; Mexico; jet5; jet6; jet8; jet9); month(May,Jun,Aug,Sep); climatevar(tmin, tmax, prcp);r; p; wilksp0.1; wilksp0.5
+# could potentially test spearman versus pearson- number of relationships different?
+
+# for Wilks, I could constrain to eastern North America (>-110E) and constrain latitudes to 55N and 30S
 
 library(maps)
 library(mapdata)

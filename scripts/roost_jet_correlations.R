@@ -1,9 +1,11 @@
-# generate table correlating monarch roosting time series with jet stream position by longitude
+# generate long table correlating monarch roosting time series with jet stream position by longitude
+# columns: period; longitude; index(August; September; Mexico); month; r; p
+# then this feeds in to correlating jet stream at certain longitudes with climate over those regions
 
 
 yrmin <- 2002
-yrmax <- 2021
-alpha <- 0.05
+yrmax <- 2019
+alpha <- 0.1
 
 # read in monarch roosts
 monarch_ts <- read.csv("data/processed/MonarchTimeSeries.csv")
@@ -12,10 +14,15 @@ monarch_ts1 <- monarch_ts[which(monarch_ts$Year>=yrmin & monarch_ts$Year<=yrmax)
 monarch_ts_detrend <- data.frame(pracma::detrend(as.matrix(monarch_ts1)))
 #monarch_ts_detrend <- detrend(data.frame(monarch_ts1), method = "Spline")
 
-JN_ROOST_8 <- monarch_ts_detrend$JN_ROOST_8
+JN_ROOST_8 <- scale(monarch_ts_detrend$JN_ROOST_8)
 
-JN_ROOST_9 <- monarch_ts_detrend$JN_ROOST_9
-mexicoarea <- monarch_ts_detrend$Mexico
+JN_ROOST_9 <- scale(monarch_ts_detrend$JN_ROOST_9)
+mexicoarea <- scale(monarch_ts_detrend$Mexico)
+
+rcorr(mexicoarea,JN_ROOST_8, type = "spearman")
+rcorr(mexicoarea,JN_ROOST_9, type = "spearman")
+rcorr(JN_ROOST_9,JN_ROOST_8, type = "spearman")
+
 
 # read in jet
 n <- read.table("data/processed/NHJ_position_global_1948-2021_ncepncar.txt")
@@ -45,8 +52,8 @@ for(j in 1:11){
   #mexicoarea <- mexicoarea[c(1,2,3,4,8,9,12,14,15,16,17,19)]
   
   for(i in 1:length(jet)){
-    if (rcorr(mexicoarea,jetdetrend[,i])$P[1,2]<alpha){
-      cor_table[j,i] <- rcorr(mexicoarea,jetdetrend[,i])[[1]][1,2]
+    if (rcorr(mexicoarea,scale(jetdetrend[,i]),type = "spearman")$P[1,2]<alpha){
+      cor_table[j,i] <- rcorr(mexicoarea,scale(jetdetrend[,i]),type = "spearman")[[1]][1,2]
     }
   }
   
@@ -68,8 +75,8 @@ for(j in 1:8){
   jetdetrend <- pracma::detrend(as.matrix(jet))
   
   for(i in 1:length(jet)){
-    if (rcorr(JN_ROOST_8,jetdetrend[,i])$P[1,2]<alpha){
-      cor_table[j,i] <- rcorr(JN_ROOST_8,jetdetrend[,i])[[1]][1,2]
+    if (rcorr(JN_ROOST_8,scale(jetdetrend[,i]))$P[1,2]<alpha){
+      cor_table[j,i] <- rcorr(JN_ROOST_8,scale(jetdetrend[,i]))[[1]][1,2]
     }
   }
   
