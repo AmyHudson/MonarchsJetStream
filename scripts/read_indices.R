@@ -4,7 +4,7 @@ yrmin <- 2004
 yrmax <- 2018
 mo <- c(5,8,9)
 month.abb[mo]
-climvar <- c("tmn","tmx","pre","uwnd","vwnd")
+climvar <- c("tmn","tmx","pre","uwnd","vwnd","ndvi")
 index <- c("JN_ROOST8","JN_ROOST9","mexicoarea","jet5","jet8","jet9")
 
 # produces monarch and jet stream indices 

@@ -1,10 +1,11 @@
 # generate long table correlating monarch roosting time series with jet stream position by longitude
 # columns: period; longitude; index(August; September; Mexico); month; r; p
 # then this feeds in to correlating jet stream at certain longitudes with climate over those regions
-
+library(tidyr)
 
 yrmin <- 2004
 yrmax <- 2018
+
 alpha <- 0.1
 
 # read in monarch roosts
@@ -58,12 +59,15 @@ for(j in 1:11){
   }
   
 }
-
 cor_table <- cbind(month.abb[1:11],data.frame(cor_table))
-cor_table <- pivot_longer(data.frame(cor_table),cols = 2:21)
+#names(cor_table) <- sub("^X.", "-", names(cor_table))
+
+cor_table <- pivot_longer(data.frame(cor_table),cols = 2:22)
+cor_table$name <- as.numeric(gsub('X.', '-', cor_table$name))
 cor_table$index <- c("mexicoarea")
 cor_table$yrmin <- yrmin
 cor_table$yrmax <- yrmax
+colnames(cor_table) <- c("month","longitude","r,p<0.1","index","yrmin","yrmax")
 
 cor_table8 <- matrix(NA,nrow = 8, ncol = length(jet))
 colnames(cor_table8) <- seq(250-360,300-360,2.5)
@@ -87,6 +91,16 @@ for(j in 1:8){
   }
   
 }
+cor_table8 <- cbind(month.abb[1:8],data.frame(cor_table8))
+#names(cor_table8) <- sub("^X.", "-", names(cor_table8))
+
+cor_table8 <- pivot_longer(data.frame(cor_table8),cols = 2:22)
+cor_table8$name <- as.numeric(gsub('X.', '-', cor_table8$name))
+cor_table8$index <- c("augroost")
+cor_table8$yrmin <- yrmin
+cor_table8$yrmax <- yrmax
+colnames(cor_table8) <- c("month","longitude","r,p<0.1","index","yrmin","yrmax")
+
 
 cor_table9 <- matrix(NA,nrow = 9, ncol = length(jet))
 colnames(cor_table9) <- seq(250-360,300-360,2.5)
@@ -110,11 +124,21 @@ for(j in 1:9){
   }
   
 }
+cor_table9 <- cbind(month.abb[1:9],data.frame(cor_table9))
+#names(cor_table9) <- sub("^X.", "-", names(cor_table9))
 
-library(tidyr)
-cor_table_all <- cbind(month.abb[1:11],data.frame(cor_table))
-cor_table_all <- pivot_longer(data.frame(cor_table),cols = 1:17)
+cor_table9 <- pivot_longer(data.frame(cor_table9),cols = 2:22)
+cor_table9$name <- as.numeric(gsub('X.', '-', cor_table9$name))
+cor_table9$index <- c("seproost")
+cor_table9$yrmin <- yrmin
+cor_table9$yrmax <- yrmax
+colnames(cor_table9) <- c("month","longitude","r,p<0.1","index","yrmin","yrmax")
 
+cor_table_all <- rbind(data.frame(cor_table),data.frame(cor_table8),data.frame(cor_table9))
+colnames(cor_table_all) <- c("month","longitude","r,p<0.1","index","yrmin","yrmax")
+
+
+write.csv(cor_table_all,"data/processed/roost_jet_corr.csv",row.names = F)
 
 
 ######################
