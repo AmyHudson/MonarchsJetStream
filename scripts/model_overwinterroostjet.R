@@ -132,12 +132,12 @@ gam(Mexico ~ s(JN_ROOST_8) +
       s(jet11m), data = all)
 
 modMex <- gam(Mexico ~ 
-                #s(jet5m,k = 5) +
+                s(jet5m,k = 5) +
                 #s(jet6m,k = 5) +
-                #s(jet6mas,k = 5) +
-                #s(jet8m,k = 5) + 
-                s(jet9ms,k = 5) +
-                s(jet9m,k = 5), #+
+                s(jet6mas,k = 5) +
+                #s(jet8as,k = 5) + 
+                s(jet9ms,k = 5), #+
+                #s(jet9m,k = 5) +
                 #s(jet10m,k = 5) +
                 #s(jet11m,k = 5), 
               data = all, method = "REML")
