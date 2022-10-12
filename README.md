@@ -17,7 +17,7 @@ To determine potential mechanisms for how the jet stream could influence these r
 
 ## Data, sources and citations:
 ### Monarch Data
-### Climate Data <!-- <h1 align="center">Climate Data</h1>  -->
+### Climate Data <!-- <h1 align="center">Climate Data</h1> 
 #### Surface temperature (max,min), precipitation, drought
 #### u and v wind velocities at the surface and multiple pressure levels
 NCEP/NCAR reanalysis project (2.5 degree, monthly aggregates)
