@@ -51,7 +51,7 @@ jet8m <- rowMeans(sapply(jet[which(m == 8),
                                      lons <= -95.0)], as.numeric))
 jet8as <- rowMeans(sapply(jet[which(m == 8),
                              which(lons >= -80 &
-                                     lons <= 67.5)], as.numeric))
+                                     lons <= -67.5)], as.numeric))
 jet9ms <- rowMeans(sapply(jet[which(m == 9),
                              which(lons >= -110 &
                                      lons <= -100)], as.numeric))
@@ -112,15 +112,23 @@ cor.mtest <- function(mat, ...)
   p.mat
 }
 
+#detrend series
+library(Hmisc)
+all <- read.csv("data/processed/MonarchJet20042018.csv")
+all <- pracma::detrend(as.matrix(all))
+
 # matrix of the p-value of the correlation
 p.mat <- cor.mtest(all[,2:16])
 
 M <- cor(all[,2:16])
+png("figures/corrplot_jetroosts_detrend.png",6,6,
+    units = "in",res = 600, pointsize=20, family= "helvetica")
 corrplot(M,type ='upper',p.mat = p.mat, sig.level = 0.1,insig = "blank")
 # this needs to be detrended to make sense- jet9ms isn't correlated to september roost because of sept pos trend
+dev.off()
 
 
-######################
+# ######################
 # GAM Model building
 
 library(mgcv)
@@ -131,16 +139,16 @@ gam(Mexico ~ s(JN_ROOST_8) +
       s(jet10m) +
       s(jet11m), data = all)
 
-modMex <- gam(Mexico ~ 
+modMex <- gam(Mexico ~
                 s(Year) +
                 #s(jet5m,k = 5) +
                 #s(jet6m,k = 5) +
                 #s(jet6mas,k = 5) +
-                #s(jet8as,k = 5) + 
+                #s(jet8as,k = 5) +
                 s(jet9ms,k = 5), #+
                 #s(jet9m,k = 5) +
                 #s(jet10m,k = 5) +
-                #s(jet11m,k = 5), 
+                #s(jet11m,k = 5),
               data = all, method = "REML")
 summary(modMex)
 

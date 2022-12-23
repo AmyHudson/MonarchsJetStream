@@ -24,6 +24,9 @@ rcorr(mexicoarea,JN_ROOST_8, type = "spearman")
 rcorr(mexicoarea,JN_ROOST_9, type = "spearman")
 rcorr(JN_ROOST_9,JN_ROOST_8, type = "spearman")
 
+rcorr(mexicoarea,JN_ROOST_8, type = "pearson")
+rcorr(mexicoarea,JN_ROOST_9, type = "pearson")
+rcorr(JN_ROOST_9,JN_ROOST_8, type = "pearson")
 
 # read in jet
 n <- read.table("data/processed/NHJ_position_global_1948-2021_ncepncar.txt")
